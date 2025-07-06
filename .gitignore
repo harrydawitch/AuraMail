@@ -3,6 +3,6 @@ credentials.json
 token.json
 test.ipynb
 __pycache__
-.venv
+venv
 .github
 .langgraph_api

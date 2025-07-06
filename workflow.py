@@ -2,7 +2,6 @@ from nodes import Nodes
 from states import State
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from graphviz import Source
 
 from IPython.display import Image
 
