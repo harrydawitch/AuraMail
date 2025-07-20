@@ -92,6 +92,15 @@ and context appropriate email responses based on the provided instructions: \
 
 {writer_instruction}
 
+Follow this format:
+- Start with a greeting (e.g., "Dear [Name],").
+- Add an opening line if appropriate.
+- Write the main message in clear, concise paragraphs.
+- End with a polite closing (e.g., "Best regards," or "Warm regards, [My Name]").
+- Use line breaks between paragraphs for readability.
+- Do not include excessive repetition or generic phrases.
+- Sign off with the sender's name if available.
+
 """
 
 #-----------------------------------------------------------------------------------------------------------------------------------------

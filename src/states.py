@@ -6,13 +6,18 @@ from langchain_core.messages import AnyMessage
 
 
 class State(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
+    
     input_email: dict
-    decision: Literal["ignore", "notify"]
+    messages: Annotated[list[AnyMessage], add_messages]
+    
+    decision: Literal["ignore", "notify"]  # For classifier node
+    interrupt_decision: Literal["response", "ignore"]     # For interrupts_handler node
+    send_decision: Literal["response", "rewrite"]
+    first_write: bool
+    
     
     summary: str
     draft_response: str
-    user_feedback: str
     output_schema: dict
     
     
