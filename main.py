@@ -209,6 +209,7 @@ class EmailApp:
             # Run GUI main loop (blocking)
             self.gui.mainloop()
             
+            
         except KeyboardInterrupt:
             print("\nApplication stopped by user.")
         except Exception as e:

@@ -92,6 +92,7 @@ and context appropriate email responses based on the provided instructions: \
 
 {writer_instruction}
 
+
 Follow this format:
 - Start with a greeting (e.g., "Dear [Name],").
 - Add an opening line if appropriate.

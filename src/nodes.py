@@ -29,6 +29,7 @@ class Nodes():
         self.gmail = GmailToolkit()
         
         
+        
     def classifier(self, state: State): 
         
         llm = self.model.with_structured_output(ClassifierOutputSchema)
