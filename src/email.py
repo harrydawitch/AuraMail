@@ -327,7 +327,8 @@ class EmailMonitor:
         # Start command processing thread
         self.command_thread = threading.Thread(target=self._process_commands, daemon=True)
         self.command_thread.start()
-    
+     
+     
     def _process_commands(self):
         """Process commands from GUI"""
         

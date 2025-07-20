@@ -1117,23 +1117,3 @@ if __name__ == "__main__":
     app()
     
     
-    # # Simulated email storage
-    # _emails = {
-    #     "home": [
-    #         EmailData("Test Email 1", "alice@example.com", "This is a test email from Alice. She's asking about the project status and wants to know if we can meet next week.", "09:15 AM"),
-    #         EmailData("Test Email 2", "bob@example.com", "Another test email from Bob. He's following up on the previous discussion about the budget allocation.", "Yesterday"),
-    #         EmailData("Spam Offer", "spam@example.com", "Buy now! Limited time offer! Get 50% off on all products! Click here to claim your discount now!", "2 days ago"),
-    #         EmailData("Approval Needed", "manager@example.com", "Please approve this request for the new software license. The team needs it urgently for the upcoming project.", "Jul 10")
-    #     ],
-    #     "notify": [
-    #         EmailData("Test Email 1", "alice@example.com", "This is a test email from Alice. She's asking about the project status and wants to know if we can meet next week.", "09:15 AM"),
-    #         EmailData("Test Email 2", "bob@example.com", "Another test email from Bob. He's following up on the previous discussion about the budget allocation.", "Yesterday")
-    #     ],
-    #     "ignore": [
-    #         EmailData("Spam Offer", "spam@example.com", "Buy now! Limited time offer! Get 50% off on all products! Click here to claim your discount now!", "2 days ago")
-    #     ],
-    #     "human": [
-    #         EmailData("Approval Needed", "manager@example.com", "Please approve this request for the new software license. The team needs it urgently for the upcoming project.", "Jul 10", 
-    #                  "Dear Manager,\n\nThank you for your request regarding the software license approval. I have reviewed the details and understand the urgency for the upcoming project.\n\nI approve this request. Please proceed with the license acquisition.\n\nBest regards,\n[Your Name]")
-    #     ]
-    # }

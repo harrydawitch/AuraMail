@@ -12,6 +12,7 @@ def parse_email(email_input: dict):
 
     return (author, to, subject, body, id)
     
+    
 def format_email_markdown(subject, author, to, email_thread, email_id=None):
     """Format email details into a nicely formatted markdown string for display
     
