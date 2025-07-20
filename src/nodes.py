@@ -1,66 +1,37 @@
+import os
+import time
+
+from datetime import datetime
+
 from src.states import State, ClassifierOutputSchema, SummarizerOutputSchema, WriterOutputSchema
 
 from src.prompts import classifier_system_prompt, default_rules, classifier_user_prompt
 from src.prompts import summary_system_prompt, summary_user_prompt, default_summarizer_instruction
 from src.prompts import writer_system_prompt, default_writer_instruction, writer_user_prompt
 
+from src.utils import parse_email, format_email_markdown, format_send_email_markdown
+
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from langgraph.types import Command, interrupt
 from langgraph.graph import END
+from langgraph.types import Command, interrupt
 
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.send_message import GmailSendMessage
 from langchain_google_community.gmail.search import GmailSearch
 
-from src.utils import parse_email, format_email_markdown, format_send_email_markdown
 
 
-class Nodes:
-    """
-    Nodes is a workflow class for processing and responding to emails using an LLM-powered agent.
-    This class encapsulates the logic for classifying, summarizing, handling user interrupts, drafting, and sending email responses.
-    It leverages a language model for structured outputs at each step and integrates with Gmail APIs for email operations.
-    Attributes:
-        model (str): The initialized chat model used for LLM operations.
-        gmail (GmailToolkit): Toolkit for interacting with Gmail API.
-    Methods:
-        __init__(model: str):
-            Initializes the Nodes instance with a specified LLM model and Gmail toolkit.
-        classifer(state: State) -> Command:
-            Classifies the input email as "notify" or "ignore" using the LLM and returns the next command.
-        summarizer(state: State) -> Command:
-            Summarizes the email body using the LLM and prepares the summary for the next step.
-        interrupts_handler(state: State) -> Command:
-            Handles user interaction to decide whether to respond to the email, based on user feedback.
-        writer(state: State) -> Command:
-            Drafts an email response using the LLM, based on the current conversation state.
-        send_response(state: State) -> Command:
-            Sends the drafted email response via Gmail, or collects feedback for further editing if not approved.
-    Raises:
-        ValueError: If an invalid classification or argument is encountered during workflow steps.
-    """
+class Nodes():
+
     def __init__(self, model: str):
         self.model= init_chat_model(model= model)
         self.gmail = GmailToolkit()
-
-    def alert_email(self, state: State):
-        search_tool = GmailSearch(api_resource= self.gmail.api_resource)
-        search_results = search_tool.invoke("label:inbox")[0] # -> return a dictionary
         
-        goto = "classifier"
-        update = {
-            "input_email": search_results
-        }
         
-        return Command(goto= goto, update= update)
-        
-    def classifier(self, state: State):
+    def classifier(self, state: State): 
         
         llm = self.model.with_structured_output(ClassifierOutputSchema)
-
-
-        # state["input_email"] = search_results 
         
         author, to, subject, body, id = parse_email(state["input_email"])
         system_msg = classifier_system_prompt.format(
@@ -75,11 +46,13 @@ class Nodes:
         result = llm.invoke(message)
             
         if result.classification == "notify":
+            
             print(f"\nClassify this email: **NOTIFY**")
             goto = "summarizer"
             update = {"decision": result.classification}
             
         elif result.classification == "ignore":
+
             print(f"\nClassify this email: **IGNORE**")
             goto = END
             update = {"decision": result.classification}
@@ -109,34 +82,34 @@ class Nodes:
         message = [SystemMessage(content= sys_msg), HumanMessage(content= user_msg)]
         response = llm.invoke(message)
         
+        print(f"Summary: {response}")
 
         goto = "interrupts_handler"
         update= {
-            "summary": response
+            "summary": response,
         } 
         
         print(f"\nCompleted summarized the email")
         
         return Command(goto= goto, update= update)
         
-        
+
     def interrupts_handler(self, state: State):
         author, to, subject, email_thread, id = parse_email(state["input_email"])
         email = format_email_markdown(subject, author, to, email_thread, id)
 
+        
         request = interrupt({
             "question": "Do you want to response to this email?",
             "show_email": email,
             "show_summary": state["summary"]
         })
-
-        print(F"REQUEST: {request}")
+    
         
-        
-        if request.get("type") is True:
+        if request.get("flag") is True:
             goto = "writer"
             update = {
-                "decision": "response",
+                "interrupt_decision": "response",
                 "messages": HumanMessage(
                                     content = writer_user_prompt.format(
                                         recipients = author,
@@ -144,12 +117,12 @@ class Nodes:
                                         summary_version = state["summary"],
                                         users_intent = request.get("feedback", ""),
                                 )
-                )
+                ),
             }
-        elif request.get("type") is False:
+        elif request.get("flag") is False:
             goto = END
             update = {
-                "decision": "ignore"
+                "interrupt_decision": "ignore",
             }
         else:
             raise ValueError(f"Invalid argument: {request["type"]}")
@@ -171,6 +144,7 @@ class Nodes:
         return Command(
             goto = "send_response", 
             update = {
+                    "first_write": False, 
                     "draft_response": draft,
                     "output_schema": response 
                 }
@@ -187,14 +161,14 @@ class Nodes:
             }
         )
         
-        if request["type"] is True:
+        if request["flag"] is True:
                         
             to = state['output_schema'].gmail_schema.to
             subject = state['output_schema'].gmail_schema.subject
             message = state['output_schema'].gmail_schema.message
             
             goto = END
-            update = {"decision": "response"}
+            update = {"send_decision": "response"}
             
             print(f"Sending response to: {to}")
             
@@ -209,7 +183,7 @@ class Nodes:
             print(f"\nResponse sent:\n\nTo: {to}\nSubject: {subject}\nBody: {message}")
             return Command(goto= goto, update= update)
         
-        else:
+        elif request["flag"] is False:
             
             goto = "writer"            
             previous_response = AIMessage(
@@ -230,7 +204,7 @@ class Nodes:
                 goto= goto,
                 update = {
                     "messages": state["messages"] + feedback,
-                    "decision": "rewrite"
+                    "send_decision": "rewrite"
                 }
             )
             
