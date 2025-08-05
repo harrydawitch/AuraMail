@@ -3,7 +3,6 @@ from src.states import State
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
-from src.utils import parse_email
 from dotenv import load_dotenv
 
 
@@ -17,9 +16,6 @@ class Workflow:
         self.graph = StateGraph(State)
         self.checkpointer = MemorySaver()
         self.get_workflow = self._create_workflow()
-        
-        self.category = {"decision": None}
-        self.summary = {"summary": None}
 
     def save_graph(self, path: str = "workflow.png") -> None:
             """

@@ -45,10 +45,10 @@ def format_send_email_markdown(subject, to, message):
     """
     
     return f"""
-            **Subject**: {subject}
-            **To**: {to}\n\n
+**Subject**: {subject}
+**To**: {to}\n\n
 
-            {message}
+{message}
 
-            ---
+---
             """
