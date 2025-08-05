@@ -44,6 +44,7 @@ class Nodes():
         )
         
         message = [SystemMessage(content= system_msg), HumanMessage(content= body_message)]
+        
         result = llm.invoke(message)
             
         if result.classification == "notify":
@@ -61,7 +62,7 @@ class Nodes():
         else:
             raise ValueError(f"Invalid classification: {result.classification}")
         
-        print(f"\nDecision: {result.classification}")
+        print(f"Decision: {result.classification}")
         print(f"Reason: {result.reasoning}\n")
         
         return Command(goto= goto, update= update)
@@ -83,14 +84,14 @@ class Nodes():
         message = [SystemMessage(content= sys_msg), HumanMessage(content= user_msg)]
         response = llm.invoke(message)
         
-        print(f"Summary: {response}")
+        print(f"Summary: {response.summary_content}")
 
         goto = "interrupts_handler"
         update= {
             "summary": response,
         } 
         
-        print(f"\nCompleted summarized the email")
+        print(f"Completed summarized the email\n")
         
         return Command(goto= goto, update= update)
         
@@ -137,10 +138,15 @@ class Nodes():
                                                                 +                                                      \
                                                         state["messages"]
         
+        print(f"\nWriting response...")
         
         response = llm.invoke(messages)
         to, subject, body = response.gmail_schema.to, response.gmail_schema.subject, response.gmail_schema.message
         draft = format_send_email_markdown(subject, to, body)
+        
+        print(f"Finished writing response.")
+        print(f"Response:")
+        print(draft)
         
         return Command(
             goto = "send_response", 
@@ -163,7 +169,7 @@ class Nodes():
         )
         
         if request["flag"] is True:
-                        
+            
             to = state['output_schema'].gmail_schema.to
             subject = state['output_schema'].gmail_schema.subject
             message = state['output_schema'].gmail_schema.message
@@ -181,7 +187,7 @@ class Nodes():
                 }
             )
             
-            print(f"\nResponse sent:\n\nTo: {to}\nSubject: {subject}\nBody: {message}")
+            print(f"\nResponse sent:\nTo: {to}\nSubject: {subject}\nBody: {message}")
             return Command(goto= goto, update= update)
         
         elif request["flag"] is False:
@@ -200,6 +206,8 @@ class Nodes():
             )
             
             feedback = [previous_response, feedback_msg]
+            
+            print(f"\n**REWRITE EMAIL**")
             
             return Command(
                 goto= goto,

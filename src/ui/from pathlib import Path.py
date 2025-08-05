@@ -157,7 +157,7 @@ class EmailGrid:
         self.grid_frame = None
         self.email_rows = []
         self.current_view_type = "normal"
-        self._destroyed = False
+        
         self._create_widgets()
     
     def _create_widgets(self):
@@ -177,53 +177,18 @@ class EmailGrid:
     
     def update_emails(self, emails: List[EmailData], view_type: str = "normal"):
         """Update the grid with new emails"""
-        try:
-            self._clear_grid()
-            self.email_rows = []
-            self.current_view_type = view_type
-            
-            # Add small delay to ensure proper cleanup
-            if hasattr(self.parent, 'after'):
-                self.parent.after(10, lambda: self._create_rows_delayed(emails, view_type))
-            else:
-                self._create_rows_delayed(emails, view_type)
-                
-        except Exception as e:
-            print(f"Error in update_emails: {e}")
-
-    # Add this new method to EmailGrid:
-    def _create_rows_delayed(self, emails, view_type):
-        """Create email rows with delay"""
+        self._clear_grid()
+        self.email_rows = []
+        self.current_view_type = view_type
+        
         for idx, email in enumerate(emails):
-            try:
-                row = EmailRow(self.grid_frame, email, idx, self.on_email_select, view_type)
-                self.email_rows.append(row)
-            except Exception as e:
-                print(f"Error creating email row {idx}: {e}")
-                continue
+            row = EmailRow(self.grid_frame, email, idx, self.on_email_select, view_type)
+            self.email_rows.append(row)
      
     def _clear_grid(self):
-        """Safely clear all widgets from the grid"""
-        if getattr(self, '_destroyed', False) or not self.grid_frame:
-            return
-            
-        try:
-            # Get all children before starting destruction
-            children = list(self.grid_frame.winfo_children())
-            
-            # Destroy children one by one with error handling
-            for widget in children:
-                try:
-                    if widget.winfo_exists():
-                        widget.destroy()
-                except Exception as e:
-                    # Widget might already be destroyed
-                    pass
-                    
-            self.email_rows.clear()
-            
-        except Exception as e:
-            print(f"Error clearing grid: {e}")
+        """Clear all widgets from the grid"""
+        for widget in self.grid_frame.winfo_children():
+            widget.destroy()
     
     def show(self):
         """Show the grid"""
@@ -464,7 +429,7 @@ class EmailDetailView:
         self._clear_action_buttons()
         
     
-    def display_email(self, email: EmailData, summary_content = "", show_draft: bool = False, category: str = None, action_callback: Callable = None):
+    def display_email(self, email: EmailData, summary_content = None, show_draft: bool = False, category: str = None, action_callback: Callable = None):
         """Display an email in the detail view, with action buttons if needed"""
         self.current_email = email
         self.current_category = category
@@ -558,7 +523,7 @@ class EmailDetailView:
             )
             approve_btn.pack(side="right", padx=(5,0))
             
-    def _show_summary(self, sender, content= ""):
+    def _show_summary(self, sender, content):
         return f"Summary of email from {sender}: \n\n{content}" 
     
     
