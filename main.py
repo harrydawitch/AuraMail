@@ -27,7 +27,8 @@ class EmailApp:
     def __init__(
                  self, 
                  workflow_model: str = "gpt-4o-mini", 
-                 check_interval: int = 10
+                 db_path: str = "db/checkpoints.sqlite" ,
+                 check_interval: int = 10,
                  ):
         
         
@@ -35,6 +36,7 @@ class EmailApp:
         self.backend = None
         self.gui = None
         self.communicator = Communicator()
+        self.db_path = db_path
         
         # Configuration
         self.workflow_model = workflow_model
@@ -50,10 +52,14 @@ class EmailApp:
         """Start the email monitoring backend"""
         print("Starting backend...")
         
+        from src.email_service import EmailService
+        EmailService.load_from_file()
+        
         self.backend = EmailManager(
             model= self.workflow_model,
             communicator= self.communicator,
-            check_interval= self.check_interval
+            check_interval= self.check_interval,
+            db_path= self.db_path
         )
         
         # Start poll emails in separate thread and run backend
@@ -61,6 +67,7 @@ class EmailApp:
 
     def start_frontend(self):
         """Start the GUI frontend"""
+        
         print("Starting GUI frontend...")
         
         self.gui = EmailAgentGUI(
@@ -92,20 +99,24 @@ class EmailApp:
         except Exception as e:
             print(f"Application error: {e}")
         finally:
-            #self.shutdown()
-            pass
+            self.shutdown()
     
     def shutdown(self):
         """Graceful shutdown"""
+        from src.email_service import EmailService
         print("Shutting down application...")
         self.running = False
         
         # Wait for backend thread to finish
         if self.backend_thread and self.backend_thread.is_alive():
+            
             print("Waiting for backend thread to finish...")
             self.backend_thread.join(timeout=5)
+            self.backend.workflow_manager.save_workflows()
+            EmailService.save_to_file()
+
             if self.backend_thread.is_alive():
-                print("Backend thread did not stop gracefully")
+                print("=== Backend thread did not stop gracefully ===")
 
 
 
@@ -117,7 +128,7 @@ def main():
         # Create and run the connected application
         app = EmailApp(
             workflow_model="gpt-4o-mini",
-            check_interval=60,
+            check_interval=40,
         )
         
         app.run()

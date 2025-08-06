@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import json
 import threading
 from datetime import datetime
 from typing import List, Dict, Optional, Set
@@ -95,15 +96,35 @@ class EmailState:
 class WorkflowManager:
     """Manages active workflows and their states"""
     
-    def __init__(self):
+    def __init__(self, db_path: str = "db/workflows.json"):
         self.active_workflows: Dict[str, Dict] = {}
         self.lock = threading.Lock()
+        self.db_path = db_path
+        self.load_workflows = self._load_workflows()
+
+        
+    def save_workflows(self):
+        with open(self.db_path, "w") as json_file:
+            json.dump(self.active_workflows, json_file, indent= 4)
     
-    def add_workflow(self, workflow_id: str, workflow_instance, config: Dict, inputs: Dict):
+    def _load_workflows(self):
+        if os.path.exists(self.db_path):
+            with open(self.db_path, "r") as f:
+                data = json.load(f)
+                if data:
+                    self.active_workflows = data
+                else:
+                    self.active_workflows = {}
+        else:
+            with open(self.db_path, 'w', encoding="utf-8") as f:
+                json.dump(self.active_workflows, f, indent= 4)
+            
+            print(f"--Succesfully create json file for storing workflows-- - (load_workflows)")
+        
+    def add_workflow(self, workflow_id: str, config: Dict, inputs: Dict):
         """Add a new workflow to track"""
         with self.lock:
             self.active_workflows[workflow_id] = {
-                'workflow': workflow_instance,
                 'config': config,
                 'inputs': inputs,
                 'thread_id': workflow_id,
@@ -151,8 +172,9 @@ class WorkflowManager:
 class WorkflowProcessor:
     def process_email(self, 
                 email: Dict = {}, 
-                workflow_id: str = "", 
-                workflow = None, 
+                workflow_id: str = "",
+                model: str = "",
+                db_path: str = None, 
                 wf_manager: WorkflowManager = None, 
                 communicator: BackendCommunicator = None, 
                 resume: bool = False, 
@@ -164,7 +186,7 @@ class WorkflowProcessor:
 
             self._start_execution(
                 self._process,
-                email, workflow, wf_manager, communicator
+                email, model, db_path, wf_manager, communicator
             )
             
 
@@ -172,19 +194,20 @@ class WorkflowProcessor:
             print(f"Resuming workflow: {workflow_id}")
             self._start_execution(
                 self._resume,
-                workflow_id, resume_inputs, wf_manager, communicator
+                workflow_id, model, db_path, resume_inputs, wf_manager, communicator
             )
     
-    def _process(self, email: Dict, workflow, wf_manager, communicator):
+    def _process(self, email: Dict, model, db_path, wf_manager, communicator):
         
         workflow_id = email["workflow_id"]
         inputs = wf_manager.initialize_inputs(email)
         thread_config = wf_manager.initialize_config(workflow_id)
         
-        wf_manager.add_workflow(workflow_id, workflow, thread_config, inputs)
+        wf_manager.add_workflow(workflow_id, thread_config, inputs)
         
         try:
-            wf = workflow.get_workflow
+            from src.workflow import Workflow
+            wf = Workflow(model, db_path).get_workflow
             result = wf.invoke(inputs, config= thread_config)
             self._sendback(result, workflow_id, communicator, wf_manager)
                         
@@ -193,7 +216,7 @@ class WorkflowProcessor:
             wf_manager.remove_workflow(workflow_id)
         
         
-    def _resume(self, workflow_id: str, resume_inputs: Dict, wf_manager, communicator):
+    def _resume(self, workflow_id: str, model: str, db_path: str, resume_inputs: Dict, wf_manager, communicator):
         
         # Get workflow data
         workflow_data = wf_manager.get_workflow(workflow_id)
@@ -207,11 +230,9 @@ class WorkflowProcessor:
             return
         
         # Get thread config and current workflow instance
-        thread_config = workflow_data.get("config")
-        wf = workflow_data.get("workflow").get_workflow
-        
-        if not thread_config or not wf:
-            print(f"Missing config or workflow instance for workflow: {workflow_id}")
+        thread_config = workflow_data.get("config")        
+        if not thread_config:
+            print(f"Missing config {workflow_id}")
             return
         
         if not resume_inputs:
@@ -220,8 +241,18 @@ class WorkflowProcessor:
     
         try:
             from langgraph.types import Command
+            from src.workflow import Workflow
             
             command = Command(resume=resume_inputs)
+            workflow_instance  = Workflow(model, db_path)
+            wf = workflow_instance.get_workflow
+            
+            # Verify checkpointer is initialized
+            if workflow_instance.checkpointer is None:
+                print(f"ERROR: Checkpointer failed to initialize for {workflow_id}")
+                wf_manager.remove_workflow(workflow_id)
+                return        
+    
             result = wf.invoke(command, config= thread_config)
             
             if self._should_sendback(result):
@@ -254,11 +285,11 @@ class WorkflowProcessor:
    
     
 class EmailProcessor:
-    def __init__(self, workflow_processor: WorkflowProcessor, communicator: BackendCommunicator, model: str):
+    def __init__(self, workflow_processor: WorkflowProcessor, communicator: BackendCommunicator, model: str, db_path: str):
         self.workflow_processor = workflow_processor
         self.communicator = communicator 
         self.model = model
-
+        self.db_path = db_path
 
     def process_new_emails(self, search_results: List[Dict], state: EmailState, wf_manager: WorkflowManager, communicator: BackendCommunicator) -> None:
         """Process new emails from search results"""
@@ -282,13 +313,13 @@ class EmailProcessor:
                 state.add_email(email_id, thread_id)
                 communicator.send_events(type_event= "new_email", data= email_dict)
                 
-                from src.workflow import Workflow 
-                wf = Workflow(self.model)
+
                 self.workflow_processor.process_email(
                     email=email_dict, 
-                    workflow=wf,
                     wf_manager=wf_manager, 
-                    communicator=communicator
+                    communicator=communicator,
+                    db_path= self.db_path,
+                    model= self.model
                 )
                 
                 new_emails_count += 1
@@ -310,14 +341,14 @@ class EmailProcessor:
     
     
 class EmailManager:
-    def __init__(self, model: str, communicator: Communicator, check_interval: int):
+    def __init__(self, model: str, communicator: Communicator, check_interval: int, db_path: str):
         self.model = model
+        self.db_path = db_path
         self.check_interval = check_interval
         
         self.searcher = EmailSearcher()
         self.state = EmailState()
         self.workflow_manager = WorkflowManager()
-
         self.communicator = BackendCommunicator(
             communicator.events, 
             communicator.commands
@@ -326,7 +357,8 @@ class EmailManager:
         self.processor = EmailProcessor(
             WorkflowProcessor(), 
             self.communicator,
-            model= self.model
+            model= self.model,
+            db_path= self.db_path
         )
         
         self.communicator.set_dependencies(self.processor, self.workflow_manager)
@@ -349,21 +381,15 @@ class EmailManager:
                 # Search for today's emails
                 search_results = self.searcher.fetch_email()
                 print(f"Number of emails in search results: {len(search_results)}")
-
-                # Handle first run
-                if self.state.is_first_run:
-                    self.state.handle_first_run(search_results)
-                    time.sleep(5)
-                    continue
                 
                 # Handle daily reset
                 self.state.handle_daily_reset()
                 
                 # Process new emails
                 self.processor.process_new_emails(
-                    search_results, 
-                    state= self.state, 
-                    wf_manager= self.workflow_manager, 
+                    search_results,
+                    state= self.state,
+                    wf_manager= self.workflow_manager,
                     communicator= self.communicator
                 )
                 
