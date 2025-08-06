@@ -1,12 +1,13 @@
 from typing import List
-
+import os
 class EmailData:
     """Data class for email information"""
-    def __init__(self, subject: str, sender: str, body: str, 
+    def __init__(self, subject: str, thread: str, sender: str, body: str, 
                  time: str, category: str = None, id: str = None,  
                  workflow_id: str = None, summary: str = None, draft_response: str = None):
         
         self.subject = subject
+        self.thread = thread
         self.sender = sender
         self.body = body
         self.time = time
@@ -25,13 +26,49 @@ class EmailData:
 
 class EmailService:
     """Service class for handling email data operations"""
+    
     emails = {
             "home": [],
             "notify": [],
             "ignore": [],
             "human": []
         }
-    
+
+    @staticmethod
+    def save_to_file(filename="db/emails.json"):
+        import json
+        
+        with open(filename, "w") as f:
+            json.dump(
+                {
+                    category: [email.__dict__ for email in EmailService.emails[category]]
+                    for category in EmailService.emails
+                },
+                f,
+                indent=4
+            )
+                
+    @staticmethod
+    def load_from_file(filename="db/emails.json"):
+        import json
+        
+        if os.path.exists(filename):
+            try:
+                with open(filename, "r") as f:
+                    data = json.load(f)
+                    for category, emails_list in data.items():
+                        EmailService.emails[category] = [
+                            EmailData(**email_dict) for email_dict in emails_list
+                        ]
+            except FileNotFoundError:
+                print("No saved email data found.")
+        else:
+            emails = {}
+            with open(filename, "w", encoding= "utf-8") as f:
+                json.dump(emails, f, indent= 4)
+            
+            print("--Succesfully create json file for storing emails-- (load_from_file)")
+            
     @staticmethod
     def load_emails_by_category(category: str) -> List[EmailData]:
         """Load emails for a specific category"""

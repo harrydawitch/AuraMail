@@ -1,8 +1,8 @@
 from src.nodes import Nodes
 from src.states import State
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
-
+from langgraph.checkpoint.sqlite import SqliteSaver
+import sqlite3
 from dotenv import load_dotenv
 
 
@@ -10,12 +10,37 @@ load_dotenv()
 
 
 class Workflow:
-    def __init__(self, model):
-        # Note: fixed spelling from `checkpoiter` to `checkpointer`
+    def __init__(self, model, db_path: str):
         self.Node = Nodes(model)
         self.graph = StateGraph(State)
-        self.checkpointer = MemorySaver()
+        
+        self.db_path = db_path
+        self.checkpointer = self._initialize_checkpointer()
         self.get_workflow = self._create_workflow()
+        
+
+    def _initialize_checkpointer(self):
+        """Initialize SQLite checkpointer for persistence"""
+        try:
+            # Validate db_paths
+            if not self.db_path:
+                print(f"ERROR: db_path is None or empty")
+                return None
+                
+            print(f"DEBUG: Initializing checkpointer with db_path: {self.db_path}")
+            
+            # Create connection to SQLite database
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            
+            # Create Sqlitesaver with connection
+            checkpointer = SqliteSaver(conn)
+            print(f"DEBUG: Checkpointer initialized successfully")
+            return checkpointer
+        
+        except Exception as e:
+            print(f"Error initializing checkpointer: {e}")
+            print(f"db_path was: {self.db_path}")
+            return None
 
     def save_graph(self, path: str = "workflow.png") -> None:
             """

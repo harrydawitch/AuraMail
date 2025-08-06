@@ -137,14 +137,19 @@ class BackendCommunicator(Communicator):
         if not self.processor:
             print("\nEmailProcessor not available - (_handle_resume_workflow)")
             return
-                        
+
+        db_path = getattr(self.processor, 'db_path', None)
+        model = getattr(self.processor, "model", None)
+        
         # Resume workflow through processor
         self.processor.workflow_processor.process_email(
             workflow_id=workflow_id,
             resume_inputs=command_data,
             resume=True,
             wf_manager=self.workflow_manager,
-            communicator=self
+            communicator=self,
+            model= model,
+            db_path = db_path
         )
             
 
