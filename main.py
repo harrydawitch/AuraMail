@@ -101,31 +101,36 @@ class EmailApp:
         finally:
             self.shutdown()
     
-
                 
     def shutdown(self):
-        """Graceful shutdown"""
-        from src.email_service import EmailService
-        print("Shutting down application...")
-        self.running = False
-        
-        # Record shutdown in backend if it exists
-        if self.backend:
-            self.backend.shutdown()
-        
-        # Wait for backend thread to finish
-        if self.backend_thread and self.backend_thread.is_alive():
-            print("Waiting for backend thread to finish...")
-            self.backend_thread.join(timeout=5)
+            """Graceful shutdown"""
+            from src.email_service import EmailService
+            print("Shutting down application...")
+            self.running = False
             
-            if self.backend and hasattr(self.backend, 'workflow_manager'):
-                self.backend.workflow_manager.save_workflows()
+            # Shutdown GUI first (including tray icon)
+            if self.gui:
+                try:
+                    self.gui.shutdown()
+                except Exception as e:
+                    print(f"Error shutting down GUI: {e}")
             
-            EmailService.save_to_file()
+            # Record shutdown in backend if it exists
+            if self.backend:
+                self.backend.shutdown()
+            
+            # Wait for backend thread to finish
+            if self.backend_thread and self.backend_thread.is_alive():
+                print("Waiting for backend thread to finish...")
+                self.backend_thread.join(timeout=5)
+                
+                if self.backend and hasattr(self.backend, 'workflow_manager'):
+                    self.backend.workflow_manager.save_workflows()
+                
+                EmailService.save_to_file()
 
-            if self.backend_thread.is_alive():
-                print("=== Backend thread did not stop gracefully ===")
-
+                if self.backend_thread.is_alive():
+                    print("=== Backend thread did not stop gracefully ===")
 
 
 
