@@ -101,18 +101,26 @@ class EmailApp:
         finally:
             self.shutdown()
     
+
+                
     def shutdown(self):
         """Graceful shutdown"""
         from src.email_service import EmailService
         print("Shutting down application...")
         self.running = False
         
+        # Record shutdown in backend if it exists
+        if self.backend:
+            self.backend.shutdown()
+        
         # Wait for backend thread to finish
         if self.backend_thread and self.backend_thread.is_alive():
-            
             print("Waiting for backend thread to finish...")
             self.backend_thread.join(timeout=5)
-            self.backend.workflow_manager.save_workflows()
+            
+            if self.backend and hasattr(self.backend, 'workflow_manager'):
+                self.backend.workflow_manager.save_workflows()
+            
             EmailService.save_to_file()
 
             if self.backend_thread.is_alive():

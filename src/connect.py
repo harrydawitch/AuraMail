@@ -193,6 +193,7 @@ class FrontendCommunicator(Communicator):
         """Handle new email received"""
 
         id = data.get("id")
+        thread = data.get("threadId")
         snippet = data.get("snippet")
         body = data.get("body")
         subject = data.get("subject")
@@ -204,7 +205,7 @@ class FrontendCommunicator(Communicator):
             from src.email_service import EmailService, EmailData
             print(f"\nNew email received: {snippet} - (_handle_new_email")
             
-            EmailService.add_new_email(email= EmailData(subject, sender, body, time, id= id, workflow_id= workflow_id))
+            EmailService.add_new_email(email= EmailData(subject, thread, sender, body, time, id= id, workflow_id= workflow_id))
             if self.gui.current_category == "home":
                 self.gui.load_emails("home")
     

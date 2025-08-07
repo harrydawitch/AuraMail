@@ -121,14 +121,13 @@ class EmailService:
         
         # Create new email with draft response
         pending_email =EmailData(
-                                  email.subject, email.sender, email.body, 
+                                  email.subject, email.thread, email.sender, email.body, 
                                   email.time, email.category, email.id, 
                                   email.workflow_id, email.summary, email.draft_response
         )
-        
+
         # Add to pending
         EmailService.emails["human"].append(pending_email)
-        
         print(f"Draft response generated for email '{email.subject}'")
     
     @staticmethod
