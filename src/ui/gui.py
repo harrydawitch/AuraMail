@@ -1,18 +1,126 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
-import tkinter as tk
+from typing import Dict, List, Callable
 from tkinter import END, messagebox
 
 from customtkinter import *
 from CTkListbox import *
 
-import time
-from queue import Queue
-import datetime
+import pystray
+from PIL import Image, ImageDraw
 import threading
 
 from src.connect import FrontendCommunicator, Communicator
 from src.email_service import EmailData, EmailService
+
+class SystemTrayManager:
+    """Manages system tray icon and window hiding/showing"""
+    
+    def __init__(self, gui_app):
+        self.gui_app = gui_app
+        self.icon = None
+        self.is_hidden = False
+        
+    def create_tray_icon(self):
+        """Create a simple tray icon"""
+        # Create a simple icon (you can replace this with an actual icon file)
+        image = Image.new('RGB', (64, 64), color='#359B0C')  # Use your app's green color
+        draw = ImageDraw.Draw(image)
+        draw.rectangle([8, 8, 56, 56], fill='white')
+        draw.text((18, 22), "AM", fill='#359B0C')  # AuraMail
+        
+        # Alternative: Load from file if you have an icon
+        # try:
+        #     icon_path = ASSETS_PATH / "auramail_icon.png"
+        #     if icon_path.exists():
+        #         image = Image.open(str(icon_path))
+        # except Exception as e:
+        #     print(f"Could not load icon file: {e}")
+        #     # Keep using generated icon
+        
+        # Create menu
+        menu = pystray.Menu(
+            pystray.MenuItem("Show AuraMail", self.show_window, default=True),
+            pystray.MenuItem("Hide AuraMail", self.hide_window),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Exit", self.quit_application)
+        )
+        
+        # Create icon
+        self.icon = pystray.Icon(
+            "AuraMail",
+            image,
+            "AuraMail - Email Agent",
+            menu
+        )
+        
+        return self.icon
+    
+    def show_window(self, icon=None, item=None):
+        """Show the main window"""
+        if self.gui_app:
+            self.gui_app.after(0, self._show_window_safe)
+    
+    def _show_window_safe(self):
+        """Thread-safe window showing"""
+        try:
+            self.gui_app.deiconify()  # Show window
+            self.gui_app.lift()       # Bring to front
+            self.gui_app.focus_force() # Focus window
+            self.is_hidden = False
+        except Exception as e:
+            print(f"Error showing window: {e}")
+    
+    def hide_window(self, icon=None, item=None):
+        """Hide the main window"""
+        if self.gui_app:
+            self.gui_app.after(0, self._hide_window_safe)
+    
+    def _hide_window_safe(self):
+        """Thread-safe window hiding"""
+        try:
+            self.gui_app.withdraw()  # Hide window
+            self.is_hidden = True
+        except Exception as e:
+            print(f"Error hiding window: {e}")
+    
+    def quit_application(self, icon=None, item=None):
+        """Completely quit the application"""
+        if self.gui_app:
+            self.gui_app.after(0, self._quit_application_safe)
+    
+    def _quit_application_safe(self):
+        """Thread-safe application quitting"""
+        try:
+            # Show confirmation dialog
+            result = messagebox.askyesno(
+                "Confirm Exit", 
+                "Are you sure you want to exit AuraMail?\nThis will stop email monitoring.",
+                parent=self.gui_app
+            )
+            
+            if result:
+                self.stop_tray_icon()
+                # Call the app's shutdown method
+                if hasattr(self.gui_app, 'shutdown'):
+                    self.gui_app.shutdown()
+                self.gui_app.quit()
+                self.gui_app.destroy()
+        except Exception as e:
+            print(f"Error quitting application: {e}")
+    
+    def start_tray_icon(self):
+        """Start the system tray icon in a separate thread"""
+        if not self.icon:
+            self.create_tray_icon()
+        
+        # Run in separate thread to avoid blocking GUI
+        tray_thread = threading.Thread(target=self.icon.run, daemon=True)
+        tray_thread.start()
+    
+    def stop_tray_icon(self):
+        """Stop the system tray icon"""
+        if self.icon:
+            self.icon.stop()
 
 # Constants
 OUTPUT_PATH = Path(__file__).parent
@@ -961,6 +1069,13 @@ class EmailAgentGUI(CTk):
         self._setup_window()
         self._create_components()
         self._initialize_app()
+
+        # Add system tray setup
+        self.tray_manager = None
+        self._setup_system_tray()
+        
+        # Override close behavior
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         self._start_event_polling()
             
@@ -1102,8 +1217,63 @@ class EmailAgentGUI(CTk):
             print(f"Sent command: {command_type} with data: {data}")
         except Exception as e:
             print(f"Error sending command: {e}")
+
+    def _setup_system_tray(self):
+        """Setup system tray functionality"""
+        try:
+            self.tray_manager = SystemTrayManager(self)
+            self.tray_manager.start_tray_icon()
+            print("System tray icon started")
+        except Exception as e:
+            print(f"Failed to setup system tray: {e}")
+            # Continue without tray if it fails
     
+    def on_closing(self):
+        """Handle window close button click"""
+        try:
+            # Show notification about minimizing to tray
+            result = messagebox.askyesnocancel(
+                "AuraMail", 
+                "What would you like to do?\n\n"
+                "• Yes: Minimize to system tray (keep running in background)\n"
+                "• No: Exit completely (stop email monitoring)\n"
+                "• Cancel: Keep window open"
+            )
             
+            if result is True:  # Yes - minimize to tray
+                if self.tray_manager:
+                    self.tray_manager.hide_window()
+                else:
+                    # Fallback to iconify if tray not available
+                    self.iconify()
+                    
+            elif result is False:  # No - exit completely
+                self.quit_application()
+                
+            # Cancel - do nothing, keep window open
+                
+        except Exception as e:
+            print(f"Error in on_closing: {e}")
+            # Fallback behavior
+            self.iconify()
+    
+    def quit_application(self):
+        """Completely quit the application"""
+        try:
+            if self.tray_manager:
+                self.tray_manager.stop_tray_icon()
+            
+            self.quit()
+            self.destroy()
+            
+        except Exception as e:
+            print(f"Error quitting application: {e}")
+    
+    def shutdown(self):
+        """Shutdown method that can be called externally"""
+        if self.tray_manager:
+            self.tray_manager.stop_tray_icon()    
+  
 def app():
     """Main entry point"""
     app = EmailAgentGUI()
