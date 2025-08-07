@@ -4,10 +4,11 @@ import uuid
 import json
 import threading
 from datetime import datetime
-from typing import List, Dict, Optional, Set
+from typing import Set, Optional, List, Dict
 from src.connect import Communicator, BackendCommunicator
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.search import GmailSearch
+from datetime import datetime
 
 
 class EmailSearcher:
@@ -26,12 +27,58 @@ class EmailSearcher:
 class EmailState:
     """Manages the state of processed emails and threads"""
     
-    def __init__(self):
+    def __init__(self, state_file: str = "db/email_state.json"):
         self.current_email_ids: Set[str] = set()
         self.processed_threads: Set[str] = set()
+        self.state_file = state_file
         self.last_check: Optional[str] = None
         self.is_first_run: bool = True
+        self.last_shutdown_time: Optional[str] = None
+        self.last_check: Optional[str] = None
     
+        self._load_state()
+
+    def _load_state(self) -> None:
+        """Load state from file"""
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, 'r') as f:
+                    data = json.load(f)
+                    self.current_email_ids = set(data.get('current_email_ids', []))
+                    self.processed_threads = set(data.get('processed_threads', []))
+                    self.last_shutdown_time = data.get('last_shutdown_time')
+                    self.last_check = data.get('last_check')
+                    self.is_first_run = data.get('is_first_run', True)
+                    
+                    print(f"Loaded state: {len(self.current_email_ids)} emails, last shutdown: {self.last_shutdown_time}")
+            except Exception as e:
+                print(f"Error loading state: {e}")
+                self._create_empty_state_file()
+        else:
+            self._create_empty_state_file()
+            
+    def save_state(self) -> None:
+        """Save current state to file"""
+        try:
+            state_data = {
+                'current_email_ids': list(self.current_email_ids),
+                'processed_threads': list(self.processed_threads),
+                'last_shutdown_time': self.last_shutdown_time,
+                'last_check': self.last_check,
+                'is_first_run': self.is_first_run
+            }
+            
+            with open(self.state_file, 'w') as f:
+                json.dump(state_data, f, indent=4)
+                
+        except Exception as e:
+            print(f"Error saving state: {e}")
+            
+    def _create_empty_state_file(self) -> None:
+        """Create empty state file"""
+        os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+        self.save_state()
+        print(f"Created new state file: {self.state_file}")
     
     def add_email(self, email_id: str, thread_id: str) -> None:
         """Add email and thread to processed sets"""
@@ -92,6 +139,12 @@ class EmailState:
             
         self.is_first_run = False
 
+    def record_shutdown(self) -> None:
+        """Record when the system is shutting down"""
+        self.last_shutdown_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        self.save_state()
+        print(f"Recorded shutdown time: {self.last_shutdown_time}")
+        
     
 class WorkflowManager:
     """Manages active workflows and their states"""
@@ -357,48 +410,58 @@ class EmailManager:
         self.processor = EmailProcessor(
             WorkflowProcessor(), 
             self.communicator,
-            model= self.model,
-            db_path= self.db_path
+            model=self.model,
+            db_path=self.db_path
         )
         
         self.communicator.set_dependencies(self.processor, self.workflow_manager)
         
         self.commands_thread = threading.Thread(
-            target= self.communicator.poll_commands, 
-            args= (self.communicator.process_commands,), 
-            daemon= True
+            target=self.communicator.poll_commands, 
+            args=(self.communicator.process_commands,), 
+            daemon=True
         ).start()
-        
-        
-        
+    
     def run(self) -> None: 
         """Main monitoring loop"""
-        
         print("\nStarting email monitoring...")
         
-        while True:
-            try:
-                # Search for today's emails
-                search_results = self.searcher.fetch_email()
-                print(f"Number of emails in search results: {len(search_results)}")
-                
-                # Handle daily reset
-                self.state.handle_daily_reset()
-                
-                # Process new emails
-                self.processor.process_new_emails(
-                    search_results,
-                    state= self.state,
-                    wf_manager= self.workflow_manager,
-                    communicator= self.communicator
-                )
-                
-                # Wait before next check
-                time.sleep(self.check_interval)
-                
-            except KeyboardInterrupt:
-                print("\nMonitoring stopped by user.")
-                break
-            except Exception as e:
-                print(f"Error in monitoring loop: {e}")
-                time.sleep(self.check_interval)
+        try:
+            while True:
+                try:
+                    # Search for today's emails
+                    search_results = self.searcher.fetch_email()
+                    print(f"Number of emails in search results: {len(search_results)}")
+                    
+                    # Handle daily reset
+                    self.state.handle_daily_reset()
+                    
+                    if self.state.is_first_run:
+                        self.state.handle_first_run(search_results)
+                    
+                    # Process new emails
+                    self.processor.process_new_emails(
+                        search_results,
+                        state=self.state,
+                        wf_manager=self.workflow_manager,
+                        communicator=self.communicator
+                    )
+                    
+                    # Wait before next check
+                    time.sleep(self.check_interval)
+                    
+                except KeyboardInterrupt:
+                    print("\nMonitoring stopped by user.")
+                    break
+                except Exception as e:
+                    print(f"Error in monitoring loop: {e}")
+                    time.sleep(self.check_interval)
+                    
+        finally:
+            # Record shutdown time when exiting
+            self.shutdown()
+    
+    def shutdown(self):
+        """Clean shutdown with state saving"""
+        print("Recording shutdown time...")
+        self.state.record_shutdown()
