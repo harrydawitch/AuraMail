@@ -147,12 +147,12 @@ class UIConfig:
     
     # Fonts
     BUTTON_FONT = ("Noto Sans", 18, "bold")
-    SUBJECT_FONT = ("Arial", 20, "bold")
-    SENDER_FONT = ("Arial", 14)
-    EMAIL_FONT = ("Arial", 13)
-    TIME_FONT = ("Arial", 12)
-    BODY_FONT = ("Arial", 13)
-    ACTION_BUTTON_FONT = ("Arial", 12, "bold")
+    SUBJECT_FONT = ("Helvetica", 20, "bold")
+    SENDER_FONT = ("Helvetica", 14)
+    EMAIL_FONT = ("Helvetica", 13)
+    TIME_FONT = ("Helvetica", 12)
+    BODY_FONT = ("Helvetica", 13)
+    ACTION_BUTTON_FONT = ("Helvetica", 12, "bold")
 
 
 class ContextDialog(CTkToplevel):
@@ -570,9 +570,8 @@ class EmailDetailView:
 
         self._hide_draft_response()
         self._clear_action_buttons()
-        
-    
-    def display_email(self, email: EmailData, summary_content = "", show_draft: bool = False, category: str = None, action_callback: Callable = None):
+
+    def display_email(self, email: EmailData, summary_content=" ", show_draft: bool = False, category: str = None, action_callback: Callable = None):
         """Display an email in the detail view, with action buttons if needed"""
         self.current_email = email
         self.current_category = category
@@ -587,10 +586,13 @@ class EmailDetailView:
         self.body_text.insert("1.0", email.body)
         self.body_text.configure(state="disabled")
 
-        # Display summary (placeholder for now)
+        # Display summary with proper error handling
         self.summary_text.configure(state="normal")
         self.summary_text.delete("1.0", END)
-        self.summary_text.insert("1.0", self._show_summary(email.sender, content= summary_content))
+        
+        # Get summary as string with proper error handling
+        summary_string = self._show_summary(content=summary_content)
+        self.summary_text.insert("1.0", summary_string)
         self.summary_text.configure(state="disabled")
 
         # Show/hide draft response based on email type
@@ -601,6 +603,7 @@ class EmailDetailView:
 
         # Show action buttons for notify or pending
         self._show_action_buttons(category)
+    
         
     def _clear_action_buttons(self):
         for widget in self.action_frame.winfo_children():
@@ -666,8 +669,30 @@ class EmailDetailView:
             )
             approve_btn.pack(side="right", padx=(5,0))
             
-    def _show_summary(self, sender, content= ""):
-        return f"Summary of email from {sender}: \n\n{content}" 
+    def _show_summary(self, content=""):
+        """Return summary content as string, handling various input types"""
+        if content is None:
+            return "No summary available."
+        
+        # If content is already a string, return it
+        if isinstance(content, str):
+            return content if content.strip() else "No summary available."
+        
+        # If content has a summary_content attribute (like a summary object)
+        if hasattr(content, 'summary_content'):
+            summary = getattr(content, 'summary_content', '')
+            return str(summary) if summary else "No summary available."
+        
+        # If content is a dict, try to get summary from it
+        if isinstance(content, dict):
+            summary = content.get('summary', content.get('summary_content', ''))
+            return str(summary) if summary else "No summary available."
+        
+        # For any other type, convert to string
+        try:
+            return str(content) if content else "No summary available."
+        except:
+            return "No summary available."
     
     
     def _handle_ignore(self):
@@ -838,7 +863,7 @@ class EmailRow:
             self.row_frame.grid_columnconfigure(1, weight=0, minsize=110)
         
         # Left label (sender | snippet)
-        left_text = f"{self.email.sender} | {self.email.get_snippet()}"
+        left_text = f"{self.email.sender} | {self.email.subject}"
         self.left_label = CTkLabel(
             self.row_frame, 
             text=left_text, 
