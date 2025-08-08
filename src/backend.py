@@ -22,7 +22,7 @@ class EmailSearcher:
 
     def fetch_email(self) -> List[Dict]:
         print(f"\n**Fetch emails**")
-        return self.search_tool.invoke(f"after:{self._get_time(format='%Y/%m/%d')}")
+        return self.search_tool.invoke(f"label:inbox after:{self._get_time(format='%Y/%m/%d')}")
 
 class EmailState:
     """Manages the state of processed emails and threads"""
@@ -85,7 +85,6 @@ class EmailState:
         self.current_email_ids.add(email_id)
         self.processed_threads.add(thread_id)
         self.last_check = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-    
     
     def is_new_email(self, email_id: str, thread_id: str, sender: str) -> bool:
         """Check if email is new and should be processed"""
@@ -209,7 +208,7 @@ class WorkflowManager:
                 "decision": "",
                 "interrupt_decision": "",
                 "send_decision": "",
-                "summary": "",
+                "summary": " ",
                 "draft_response": "",
                 "first_write": True,
                 "output_schema": {},

@@ -17,11 +17,6 @@ class EmailData:
         self.summary = summary
         self.draft_response = draft_response  
     
-    def get_snippet(self, max_length: int = 40) -> str:
-        """Get truncated body text for preview"""
-        if len(self.body) <= max_length:
-            return self.body
-        return self.body[:max_length] + "..."
 
 
 class EmailService:
