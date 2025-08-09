@@ -1,7 +1,3 @@
-import os
-import time
-
-from datetime import datetime
 
 from src.states import State, ClassifierOutputSchema, SummarizerOutputSchema, WriterOutputSchema
 
@@ -18,7 +14,11 @@ from langgraph.types import Command, interrupt
 
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.send_message import GmailSendMessage
-from langchain_google_community.gmail.search import GmailSearch
+
+import base64
+import json
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 
@@ -159,8 +159,6 @@ class Nodes():
         
         
     def send_response(self, state: State):
-        tool = GmailSendMessage(api_resource= self.gmail.api_resource)
-        
         request = interrupt(
             {
                 "draft_response": state["draft_response"],
@@ -179,19 +177,40 @@ class Nodes():
             
             print(f"Sending response to: {to}")
             
-            tool.invoke(
-                {
-                    "to": to,
-                    "subject": subject,
-                    "message": message
-                }
-            )
+            # Create properly formatted email message
+            from src.utils import create_formatted_email
+            formatted_message = create_formatted_email(to, subject, message)
             
-            print(f"\nResponse sent:\nTo: {to}\nSubject: {subject}\nBody: {message}")
+            # Use the raw Gmail API instead of the LangChain tool
+            try:
+                # Get the Gmail service from the toolkit
+                service = self.gmail.api_resource
+                
+                # Send the message
+                result = service.users().messages().send(
+                    userId='me',
+                    body={'raw': formatted_message}
+                ).execute()
+                
+                print(f"\nResponse sent successfully!")
+                print(f"Message ID: {result['id']}")
+                
+            except Exception as e:
+                print(f"Error sending email: {e}")
+                # Fallback to original method if the above fails
+                tool = GmailSendMessage(api_resource= self.gmail.api_resource)
+                tool.invoke(
+                    {
+                        "to": to,
+                        "subject": subject,
+                        "message": message
+                    }
+                )
+            
             return Command(goto= goto, update= update)
         
         elif request["flag"] is False:
-            
+            # ... rest of the method remains the same
             goto = "writer"            
             previous_response = AIMessage(
                 content= state["draft_response"]
@@ -199,7 +218,7 @@ class Nodes():
             feedback_msg = HumanMessage(
                 content=(
                     "The previous draft wasn't quite right and align to my intented. \
-                     Take a look of the feedback below:\n "
+                    Take a look of the feedback below:\n "
                     f"{request.get('feedback', '<no feedback given>')}\n"
                     "Please rewrite the reply accordingly."
                 )  

@@ -55,7 +55,7 @@ Output format:
 Format:
     Name of the author
     Original email's subject
-    
+
     First bullet point ...
     Second bullet point ...
     .
@@ -94,10 +94,10 @@ and context appropriate email responses based on the provided instructions: \
 
 
 Follow this format:
-- Start with a greeting (e.g., "Dear [Name],").
+- Start with a greeting (e.g., "Dear...,").
 - Add an opening line if appropriate.
 - Write the main message in clear, concise paragraphs.
-- End with a polite closing (e.g., "Best regards," or "Warm regards, [My Name]").
+- End with a polite closing (e.g., "Best regards," or "Warm regards, My Name").
 - Use line breaks between paragraphs for readability.
 - Do not include excessive repetition or generic phrases.
 - Sign off with the sender's name if available.
@@ -127,6 +127,10 @@ Instruction:
 4. Maintain an appropriate tone (formal, friendly) based on the context and relationship with the recipient.
 5. Do not include unnecessary information or speculation. Focus on aligning your response with the user's intent.
 6. Double check for accuracy and completeness before finalizing the draft.
+7. IMPORTANT: Format your email properly:
+   - Use double line breaks (two newlines) between paragraphs
+   - Use single line breaks within paragraphs only when necessary
+   - Keep paragraphs concise and readable
+   - Separate greeting, body paragraphs, and closing with double line breaks
 """
 
-# TODO: include summary content for writer agent
