@@ -285,6 +285,7 @@ class EmailGrid:
     
     def update_emails(self, emails: List[EmailData], view_type: str = "normal"):
         """Update the grid with new emails"""
+        
         try:
             self._clear_grid()
             self.email_rows = []
@@ -302,6 +303,7 @@ class EmailGrid:
     # Add this new method to EmailGrid:
     def _create_rows_delayed(self, emails, view_type):
         """Create email rows with delay"""
+        
         for idx, email in enumerate(emails):
             try:
                 row = EmailRow(self.grid_frame, email, idx, self.on_email_select, view_type)
@@ -506,6 +508,7 @@ class EmailDetailView:
             corner_radius=15,
             border_width=1,
             border_spacing=5,
+            spacing1=2, spacing2=2, spacing3=2
         )
         self.summary_text.grid(row=1, column=0, sticky="nsew", pady=(0, 0))
         
@@ -526,6 +529,8 @@ class EmailDetailView:
             corner_radius=15,
             border_width=1,
             border_spacing=5,
+            spacing1=2, spacing2=2, spacing3=2
+
         )
         self.body_text.grid(row=1, column=2, sticky="nsew", pady=(0, 0))
         
@@ -545,6 +550,8 @@ class EmailDetailView:
             corner_radius=15,
             border_width=1,
             border_spacing=5,
+            spacing1=2, spacing2=2, spacing3=2
+
         )
         
         # Action frame for buttons (below sender label)
@@ -742,15 +749,14 @@ class EmailDetailView:
             "flag": True,
             "workflow_id": self.current_email.workflow_id
         }
-        
-        root.send_commands(command_type= "email_approval", data= data)
-        
+                
         EmailService.approve_draft_response(self.current_email)
         
         if self.action_callback:
             self.action_callback("refresh")
             
-        root.send_commands(type, data)
+        root.send_commands(command_type= type, data= data)
+
 
     def _handle_reject(self):
         def on_feedback_provided(feedback: str):
@@ -1260,21 +1266,19 @@ class EmailAgentGUI(CTk):
             result = messagebox.askyesnocancel(
                 "AuraMail", 
                 "What would you like to do?\n\n"
-                "• Yes: Minimize to system tray (keep running in background)\n"
-                "• No: Exit completely (stop email monitoring)\n"
+                "• Yes: Exit completely (stop email monitoring)\n"
+                "• No: Minimize to system tray (keep running in background)\n"
                 "• Cancel: Keep window open"
             )
-            
             if result is True:  # Yes - minimize to tray
+                self.quit_application()
+                    
+            elif result is False:  # No - exit completely
                 if self.tray_manager:
                     self.tray_manager.hide_window()
                 else:
                     # Fallback to iconify if tray not available
                     self.iconify()
-                    
-            elif result is False:  # No - exit completely
-                self.quit_application()
-                
             # Cancel - do nothing, keep window open
                 
         except Exception as e:

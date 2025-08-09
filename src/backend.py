@@ -19,10 +19,14 @@ class EmailSearcher:
     def _get_time(self, format: str) -> str:
         return datetime.now().strftime(format)
             
-
-    def fetch_email(self) -> List[Dict]:
-        print(f"\n**Fetch emails**")
-        return self.search_tool.invoke(f"label:inbox after:{self._get_time(format='%Y/%m/%d')}")
+    def fetch_email(self, state) -> List[Dict]:
+        last_shutdown_date = state.last_shutdown_date
+        
+        if last_shutdown_date and isinstance(last_shutdown_date, str):
+            print(f"\n**Fetch emails**")
+            return self.search_tool.invoke(f"label:inbox after:{last_shutdown_date}")
+        else:
+            return self.search_tool.invoke(f"label:inbox after:{self._get_time(format='%Y/%m/%d')}")
 
 class EmailState:
     """Manages the state of processed emails and threads"""
@@ -34,7 +38,7 @@ class EmailState:
         self.last_check: Optional[str] = None
         self.is_first_run: bool = True
         self.last_shutdown_time: Optional[str] = None
-        self.last_check: Optional[str] = None
+        self.last_shutdown_date: Optional[str] = None
     
         self._load_state()
 
@@ -47,8 +51,9 @@ class EmailState:
                     self.current_email_ids = set(data.get('current_email_ids', []))
                     self.processed_threads = set(data.get('processed_threads', []))
                     self.last_shutdown_time = data.get('last_shutdown_time')
-                    self.last_check = data.get('last_check')
+                    self.last_shutdown_date = data.get('last_shutdown_date')
                     self.is_first_run = data.get('is_first_run', True)
+                    self.last_check = data.get('last_check')
                     
                     print(f"Loaded state: {len(self.current_email_ids)} emails, last shutdown: {self.last_shutdown_time}")
             except Exception as e:
@@ -65,7 +70,8 @@ class EmailState:
                 'processed_threads': list(self.processed_threads),
                 'last_shutdown_time': self.last_shutdown_time,
                 'last_check': self.last_check,
-                'is_first_run': self.is_first_run
+                'last_shutdown_date': self.last_shutdown_date,
+                'is_first_run': self.is_first_run,
             }
             
             with open(self.state_file, 'w') as f:
@@ -98,35 +104,11 @@ class EmailState:
         
         result = is_new_id and is_new_thread and is_not_from_me
         
-        print(f"  Final result: {result} (new_id: {is_new_id}, new_thread: {is_new_thread}, not_from_me: {is_not_from_me})")
+        print(f"Final result: {result} (new_id: {is_new_id}, new_thread: {is_new_thread}, not_from_me: {is_not_from_me})")
         
         return result
     
-    def _should_reset_daily_state(self) -> bool:
-        """Check if we should reset state for new day"""
-        
-        if not self.last_check:
-            return False
-        
-        last_check_time = datetime.strptime(self.last_check, "%Y/%m/%d %H:%M:%S")
-        midnight = datetime.now().replace(hour=0, minute=0, second=0)
-        
-        return last_check_time < midnight
     
-    def _reset_daily_state(self) -> None:
-        """Reset state for new day"""
-        
-        self.current_email_ids.clear()
-        self.processed_threads.clear()
-        
-    def handle_daily_reset(self) -> None:
-        """Handle daily state reset if needed"""
-        
-        if self._should_reset_daily_state():
-            print("New day detected. Resetting daily state...")
-            self._reset_daily_state()
-    
-
     def handle_first_run(self, search_results: List[Dict]) -> None:
         """Handle initial run to collect existing emails"""
         
@@ -141,6 +123,7 @@ class EmailState:
     def record_shutdown(self) -> None:
         """Record when the system is shutting down"""
         self.last_shutdown_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        self.last_shutdown_date = datetime.now().strftime("%Y/%m/%d")
         self.save_state()
         print(f"Recorded shutdown time: {self.last_shutdown_time}")
         
@@ -398,8 +381,8 @@ class EmailManager:
         self.db_path = db_path
         self.check_interval = check_interval
         
-        self.searcher = EmailSearcher()
         self.state = EmailState()
+        self.searcher = EmailSearcher()
         self.workflow_manager = WorkflowManager()
         self.communicator = BackendCommunicator(
             communicator.events, 
@@ -429,12 +412,9 @@ class EmailManager:
             while True:
                 try:
                     # Search for today's emails
-                    search_results = self.searcher.fetch_email()
+                    search_results = self.searcher.fetch_email(self.state)
                     print(f"Number of emails in search results: {len(search_results)}")
-                    
-                    # Handle daily reset
-                    self.state.handle_daily_reset()
-                    
+                                      
                     if self.state.is_first_run:
                         self.state.handle_first_run(search_results)
                     
