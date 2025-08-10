@@ -3,6 +3,7 @@ import threading
 from datetime import datetime
 from typing import Dict
 from dataclasses import dataclass
+from langchain_google_community import GmailToolkit
 
 from src.backend import EmailManager
 from src.ui.gui import EmailAgentGUI
@@ -58,6 +59,7 @@ class EmailApp:
         self.backend = EmailManager(
             model= self.workflow_model,
             communicator= self.communicator,
+            gmail_api= GmailToolkit(),
             check_interval= self.check_interval,
             db_path= self.db_path
         )

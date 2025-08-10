@@ -3,18 +3,23 @@ import time
 import uuid
 import json
 import threading
-from datetime import datetime
 from typing import Set, Optional, List, Dict
+
+from datetime import datetime
+from email.utils import parsedate_to_datetime
+from datetime import datetime
+
 from src.connect import Communicator, BackendCommunicator
+
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.search import GmailSearch
-from datetime import datetime
+
 
 
 class EmailSearcher:
-    def __init__(self):
-        gmail = GmailToolkit()
-        self.search_tool = GmailSearch(api_resource= gmail.api_resource) 
+    def __init__(self, gmail_api: GmailToolkit):
+        self.gmail = gmail_api
+        self.search_tool = GmailSearch(api_resource= self.gmail.api_resource) 
         
     def _get_time(self, format: str) -> str:
         return datetime.now().strftime(format)
@@ -320,10 +325,11 @@ class WorkflowProcessor:
    
     
 class EmailProcessor:
-    def __init__(self, workflow_processor: WorkflowProcessor, communicator: BackendCommunicator, model: str, db_path: str):
+    def __init__(self, workflow_processor: WorkflowProcessor, communicator: BackendCommunicator, model: str, gmail_api: GmailToolkit, db_path: str):
         self.workflow_processor = workflow_processor
         self.communicator = communicator 
         self.model = model
+        self.gmail_api= gmail_api
         self.db_path = db_path
 
     def process_new_emails(self, search_results: List[Dict], state: EmailState, wf_manager: WorkflowManager, communicator: BackendCommunicator) -> None:
@@ -365,22 +371,34 @@ class EmailProcessor:
             print(f"\n=== Processed {new_emails_count} new emails ===")
         
     def _preprocess_new_email(self, email: Dict) -> Dict:
-        """Assigning workflow id to each email"""
+        """Assigning workflow id and sent time to email"""
+        service = self.gmail_api.api_resource
         wf_id = str(uuid.uuid4())
+        
+        msg_id = email["id"]
+        message_data = service.users().messages().get(
+            userId="me",
+            id=msg_id,
+            format="full"
+        ).execute()
+        headers = message_data["payload"]["headers"]
+        date_str = next(h["value"] for h in headers if h["name"].lower() == "date")
+        
+        sent_time = parsedate_to_datetime(date_str).strftime("%d/%m/%Y - %H:%M")
+        
+        email["time"] = sent_time
         email["workflow_id"] = wf_id
-        email["time"] = datetime.now().strftime("%d/%m/%Y - %H:%M")
         
         return email
     
-    
 class EmailManager:
-    def __init__(self, model: str, communicator: Communicator, check_interval: int, db_path: str):
+    def __init__(self, model: str, communicator: Communicator, gmail_api: GmailToolkit, check_interval: int, db_path: str):
         self.model = model
         self.db_path = db_path
         self.check_interval = check_interval
         
         self.state = EmailState()
-        self.searcher = EmailSearcher()
+        self.searcher = EmailSearcher(gmail_api)
         self.workflow_manager = WorkflowManager()
         self.communicator = BackendCommunicator(
             communicator.events, 
@@ -391,6 +409,7 @@ class EmailManager:
             WorkflowProcessor(), 
             self.communicator,
             model=self.model,
+            gmail_api= gmail_api,
             db_path=self.db_path
         )
         
