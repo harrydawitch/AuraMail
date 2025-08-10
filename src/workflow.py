@@ -5,9 +5,10 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
 from dotenv import load_dotenv
 
-
-load_dotenv() 
-
+try:
+    load_dotenv()
+except Exception as e:
+    print(f"Error in loading .env")
 
 class Workflow:
     def __init__(self, model, db_path: str):
@@ -26,15 +27,12 @@ class Workflow:
             if not self.db_path:
                 print(f"ERROR: db_path is None or empty")
                 return None
-                
-            print(f"DEBUG: Initializing checkpointer with db_path: {self.db_path}")
             
             # Create connection to SQLite database
             conn = sqlite3.connect(self.db_path, check_same_thread=False)
             
             # Create Sqlitesaver with connection
             checkpointer = SqliteSaver(conn)
-            print(f"DEBUG: Checkpointer initialized successfully")
             return checkpointer
         
         except Exception as e:

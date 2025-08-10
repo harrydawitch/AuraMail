@@ -63,9 +63,9 @@ class SystemTrayManager:
     def _show_window_safe(self):
         """Thread-safe window showing"""
         try:
-            self.gui_app.deiconify()  # Show window
-            self.gui_app.lift()       # Bring to front
-            self.gui_app.focus_force() # Focus window
+            self.gui_app.deiconify() 
+            self.gui_app.lift()      
+            self.gui_app.focus_force()
             self.is_hidden = False
         except Exception as e:
             print(f"Error showing window: {e}")

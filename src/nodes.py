@@ -15,10 +15,6 @@ from langgraph.types import Command, interrupt
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.send_message import GmailSendMessage
 
-import base64
-import json
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 
 
@@ -34,7 +30,7 @@ class Nodes():
         
         llm = self.model.with_structured_output(ClassifierOutputSchema)
         
-        author, to, subject, body, id = parse_email(state["input_email"])
+        author, to, subject, body, _ = parse_email(state["input_email"])
         system_msg = classifier_system_prompt.format(
             rules= default_rules
         )

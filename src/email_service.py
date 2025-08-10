@@ -11,7 +11,7 @@ class EmailData:
         
         self.subject = self._decode_email_header(subject)
         self.thread = thread
-        self.sender = sender
+        self.sender = self._decode_email_header(sender)
         self.body = body
         self.time = time
         self.category = category
@@ -116,6 +116,7 @@ class EmailService:
                 print("No saved email data found.")
         else:
             emails = {}
+            os.makedirs(os.path.dirname(filename), exist_ok= True)
             with open(filename, "w", encoding= "utf-8") as f:
                 json.dump(emails, f, indent= 4)
             

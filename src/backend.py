@@ -333,7 +333,7 @@ class EmailProcessor:
         
         print(f"\n=== Processing {len(search_results)} emails === - (process_new_emails)")
         
-        for i, email_dict in enumerate(search_results):
+        for email_dict in search_results:
             email_id = email_dict["id"]
             thread_id = email_dict["threadId"]
             sender = email_dict.get("sender", "Unknown sender")
@@ -358,8 +358,6 @@ class EmailProcessor:
                 )
                 
                 new_emails_count += 1
-            else:
-                print(f"✗ Email already processed or from self - Skipping")
         
         if new_emails_count == 0:
             print("\n=== No new emails found. Waiting for next run! ===")
