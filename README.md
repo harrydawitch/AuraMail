@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AuraMail
 
 An intelligent email automation system that monitors your Gmail inbox, classifies emails using AI, and helps you manage responses efficiently with a modern desktop GUI.
