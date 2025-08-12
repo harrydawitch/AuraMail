@@ -42,7 +42,7 @@ Would you like me to open that page in your browser now? [Y/n]
 
 #### 🆕 **First-Time Google Cloud Users**
 
-If this is your first time using Google Cloud Console:
+If this is your first time using Google Cloud Console (Toggle `Configure OAuth Consent Screen` below):
 
 <details>
 <summary><strong>📱 Configure OAuth Consent Screen</strong></summary>
