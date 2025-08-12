@@ -38,6 +38,7 @@ An intelligent email automation system that monitors your Gmail inbox, classifie
    ```bash
    git clone https://github.com/harrydawitch/AuraMail.git
    cd AuraMail 
+   python -m venv .venv
    ```
 
 2. **Install dependencies**
