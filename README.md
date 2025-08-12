@@ -1,1 +1,1 @@
-# GmailFlow-AI
+# **AuraMail**
