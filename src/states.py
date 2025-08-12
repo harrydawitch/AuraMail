@@ -1,18 +1,26 @@
 from pydantic import BaseModel, Field
-from typing import Literal, TypedDict, Annotated
+from typing import Literal, TypedDict, Annotated, List
 
 from langgraph.graph import add_messages
 from langchain_core.messages import AnyMessage
 
 
-class State(TypedDict):
+class SendEmailState(TypedDict):
+    messages: Annotated[List[AnyMessage], add_messages]
+    send_decision: Literal["response", "rewrite", "error"]
+    draft_response: str
+    first_write: bool  
+    output_schema: dict  
+
+
+class EmailResponseState(TypedDict):
     
     input_email: dict
-    messages: Annotated[list[AnyMessage], add_messages]
+    messages: Annotated[List[AnyMessage], add_messages]
     
-    decision: Literal["ignore", "notify"]  # For classifier node
-    interrupt_decision: Literal["response", "ignore"]     # For interrupts_handler node
-    send_decision: Literal["response", "rewrite"]
+    decision: Literal["ignore", "notify"]  
+    interrupt_decision: Literal["response", "ignore"]    
+    send_decision: Literal["response", "rewrite", "error"]  
     first_write: bool
     
     

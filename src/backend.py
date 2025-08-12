@@ -187,22 +187,33 @@ class WorkflowManager:
         with self.lock:
             if workflow_id in self.active_workflows:
                 self.active_workflows[workflow_id]['status'] = status
-    
-    def initialize_inputs(self, email_input: dict):
-        with self.lock:
-            inputs = {
-                "input_email": email_input,
-                "messages": [],
-                "decision": "",
-                "interrupt_decision": "",
-                "send_decision": "",
-                "summary": " ",
-                "draft_response": "",
-                "first_write": True,
-                "output_schema": {},
-            }
-            
-            return  inputs
+
+
+    def initialize_inputs(self, email_input: dict = {}, send_email: bool = False):
+            with self.lock:
+                if send_email:
+                    inputs = {
+                        "messages": email_input.get("messages"),
+                        "send_decision": "",
+                        "draft_response": "",
+                        "first_write": True,
+                        "output_schema": {} 
+                    }
+                    
+                else:
+                    inputs = {
+                        "input_email": email_input,
+                        "messages": [],
+                        "decision": "",
+                        "interrupt_decision": "",
+                        "send_decision": "",
+                        "summary": " ",
+                        "draft_response": "",
+                        "first_write": True,
+                        "output_schema": {} 
+                    }
+                    
+                return inputs
         
     def initialize_config(self, workflow_id: str):
         
@@ -213,31 +224,66 @@ class WorkflowProcessor:
     def process_email(self, 
                 email: Dict = {}, 
                 workflow_id: str = "",
-                model: str = "",
-                db_path: str = None, 
+                wf = None,
                 wf_manager: WorkflowManager = None, 
-                communicator: BackendCommunicator = None, 
+                communicator: BackendCommunicator = None,
                 resume: bool = False, 
-                resume_inputs: Dict = None) -> None:
-        """Process email in a separate thread"""
+                resume_inputs: Dict = None,
+                send_email: bool = False) -> None:
         
-        if not resume:
-            print(f"Processing email: {email["snippet"]}")    
+        """Process email in a separate thread"""
+        if send_email:
+            print(f"Generating email...")    
+
+            self._start_execution(
+                self._generate_email,
+                email, workflow_id, wf, wf_manager, communicator
+            )
+        
+        elif not resume:
+            # Only print snippet for regular emails, not send emails
+            if "snippet" in email:
+                print(f"Processing email: {email['snippet']}")
+            else:
+                print(f"Processing email workflow: {workflow_id}")
 
             self._start_execution(
                 self._process,
-                email, model, db_path, wf_manager, communicator
+                email, wf, wf_manager, communicator
             )
-            
 
         else:
             print(f"Resuming workflow: {workflow_id}")
             self._start_execution(
                 self._resume,
-                workflow_id, model, db_path, resume_inputs, wf_manager, communicator
+                workflow_id, wf, resume_inputs, wf_manager, communicator
             )
-    
-    def _process(self, email: Dict, model, db_path, wf_manager, communicator):
+
+    def _generate_email(self, email: Dict, workflow_id: str, wf, wf_manager, communicator):
+        
+        inputs = wf_manager.initialize_inputs(email, send_email=True)
+        thread_config = wf_manager.initialize_config(workflow_id)
+        
+        wf_manager.add_workflow(workflow_id, thread_config, inputs)
+        
+        try:
+            result = wf.invoke(inputs, config=thread_config)
+            
+            # Check if workflow needs user interaction
+            if self._should_sendback(result):
+                self._sendback(result, workflow_id, communicator, wf_manager)
+            else:
+                # Email was sent successfully, cleanup
+                print(f"Send email workflow {workflow_id} completed successfully")
+                wf_manager.remove_workflow(workflow_id)
+                            
+        except Exception as e:
+            print(f"Error in send email workflow {workflow_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            wf_manager.remove_workflow(workflow_id)
+
+    def _process(self, email: Dict, wf, wf_manager, communicator):
         
         workflow_id = email["workflow_id"]
         inputs = wf_manager.initialize_inputs(email)
@@ -246,8 +292,6 @@ class WorkflowProcessor:
         wf_manager.add_workflow(workflow_id, thread_config, inputs)
         
         try:
-            from src.workflow import Workflow
-            wf = Workflow(model, db_path).get_workflow
             result = wf.invoke(inputs, config= thread_config)
             self._sendback(result, workflow_id, communicator, wf_manager)
                         
@@ -256,7 +300,7 @@ class WorkflowProcessor:
             wf_manager.remove_workflow(workflow_id)
         
         
-    def _resume(self, workflow_id: str, model: str, db_path: str, resume_inputs: Dict, wf_manager, communicator):
+    def _resume(self, workflow_id: str, wf, resume_inputs: Dict, wf_manager, communicator):
         
         # Get workflow data
         workflow_data = wf_manager.get_workflow(workflow_id)
@@ -281,18 +325,8 @@ class WorkflowProcessor:
     
         try:
             from langgraph.types import Command
-            from src.workflow import Workflow
             
             command = Command(resume=resume_inputs)
-            workflow_instance  = Workflow(model, db_path)
-            wf = workflow_instance.get_workflow
-            
-            # Verify checkpointer is initialized
-            if workflow_instance.checkpointer is None:
-                print(f"ERROR: Checkpointer failed to initialize for {workflow_id}")
-                wf_manager.remove_workflow(workflow_id)
-                return        
-    
             result = wf.invoke(command, config= thread_config)
             
             if self._should_sendback(result):
@@ -325,14 +359,37 @@ class WorkflowProcessor:
    
     
 class EmailProcessor:
-    def __init__(self, workflow_processor: WorkflowProcessor, communicator: BackendCommunicator, model: str, gmail_api: GmailToolkit, db_path: str):
+    def __init__(self, workflow_processor: WorkflowProcessor, wf_manager: WorkflowManager, communicator: BackendCommunicator, state: EmailState, model: str, gmail_api: GmailToolkit, db_path: str):
         self.workflow_processor = workflow_processor
-        self.communicator = communicator 
+        self.wf_manager = wf_manager
+        self.communicator = communicator
+        self.state = state
         self.model = model
         self.gmail_api= gmail_api
         self.db_path = db_path
+        
+    def process_generate_email(self, inputs: Dict, workflow_id: str = None) -> None: 
+        """Generate draft email for user to send email"""
+        from src.workflow import SendEmailWorkflow
 
-    def process_new_emails(self, search_results: List[Dict], state: EmailState, wf_manager: WorkflowManager, communicator: BackendCommunicator) -> None:
+        if not workflow_id:
+            workflow_id = str(uuid.uuid4())
+            
+        workflow_instance = SendEmailWorkflow(self.model, self.db_path)
+        wf = workflow_instance.get_workflow      
+        
+        self.workflow_processor.process_email(
+            email=inputs,
+            workflow_id=workflow_id,
+            wf=wf,
+            wf_manager=self.wf_manager, 
+            communicator=self.communicator,
+            send_email=True
+        )
+        
+        
+
+    def process_new_emails(self, search_results: List[Dict]) -> None:
         """Process new emails from search results"""
         
         new_emails_count = 0
@@ -344,23 +401,25 @@ class EmailProcessor:
             thread_id = email_dict["threadId"]
             sender = email_dict.get("sender", "Unknown sender")
             
-            if state.is_new_email(email_id, thread_id, sender):
+            if self.state.is_new_email(email_id, thread_id, sender):
                 print(f"✓ NEW EMAIL DETECTED - Processing...")
                 
                 # Assign workflow id
                 email_dict = self._preprocess_new_email(email_dict)
                 
                 # add this email to current emails and threads state
-                state.add_email(email_id, thread_id)
-                communicator.send_events(type_event= "new_email", data= email_dict)
+                self.state.add_email(email_id, thread_id)
+                self.communicator.send_events(type_event= "new_email", data= email_dict)
                 
+                from src.workflow import EmailResponseWorkflow
+                workflow_instance = EmailResponseWorkflow(self.model, self.db_path)
+                wf = workflow_instance.get_workflow
 
                 self.workflow_processor.process_email(
-                    email=email_dict, 
-                    wf_manager=wf_manager, 
-                    communicator=communicator,
-                    db_path= self.db_path,
-                    model= self.model
+                    email=email_dict,
+                    wf= wf,
+                    wf_manager=self.wf_manager, 
+                    communicator=self.communicator,
                 )
                 
                 new_emails_count += 1
@@ -391,6 +450,8 @@ class EmailProcessor:
         
         return email
     
+    
+    
 class EmailManager:
     def __init__(self, model: str, communicator: Communicator, gmail_api: GmailToolkit, check_interval: int, db_path: str):
         self.model = model
@@ -405,9 +466,15 @@ class EmailManager:
             communicator.commands
         )
         
+        # Set model and db_path on communicator for workflow creation
+        self.communicator.model = model
+        self.communicator.db_path = db_path
+        
         self.processor = EmailProcessor(
-            WorkflowProcessor(), 
-            self.communicator,
+            workflow_processor= WorkflowProcessor(), 
+            wf_manager= self.workflow_manager,
+            communicator= self.communicator,
+            state = self.state,
             model=self.model,
             gmail_api= gmail_api,
             db_path=self.db_path
@@ -436,12 +503,7 @@ class EmailManager:
                         self.state.handle_first_run(search_results)
                     
                     # Process new emails
-                    self.processor.process_new_emails(
-                        search_results,
-                        state=self.state,
-                        wf_manager=self.workflow_manager,
-                        communicator=self.communicator
-                    )
+                    self.processor.process_new_emails(search_results)
                     
                     # Wait before next check
                     time.sleep(self.check_interval)

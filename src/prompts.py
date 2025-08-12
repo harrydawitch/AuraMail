@@ -117,6 +117,11 @@ Please draft a response that addresses my intent below and send to {recipients}:
 {users_intent}
 """
 
+send_email_writer_prompt = """
+Draft an email that addresses my intent below and sent from: {from_user}, to {to_user}:
+{users_intent} 
+"""
+
 #-----------------------------------------------------------------------------------------------------------------------------------------
 
 default_writer_instruction = """

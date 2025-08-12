@@ -1,5 +1,5 @@
 
-from src.states import State, ClassifierOutputSchema, SummarizerOutputSchema, WriterOutputSchema
+from src.states import SendEmailState, EmailResponseState, ClassifierOutputSchema, SummarizerOutputSchema, WriterOutputSchema
 
 from src.prompts import classifier_system_prompt, default_rules, classifier_user_prompt
 from src.prompts import summary_system_prompt, summary_user_prompt, default_summarizer_instruction
@@ -15,6 +15,7 @@ from langgraph.types import Command, interrupt
 from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.send_message import GmailSendMessage
 
+from typing import Union
 
 
 
@@ -26,7 +27,7 @@ class Nodes():
         
         
         
-    def classifier(self, state: State): 
+    def classifier(self, state: EmailResponseState): 
         
         llm = self.model.with_structured_output(ClassifierOutputSchema)
         
@@ -65,7 +66,7 @@ class Nodes():
         
         
         
-    def summarizer(self, state: State):
+    def summarizer(self, state: EmailResponseState):
         
         print(f"\nSummarizing the email...")
         
@@ -92,7 +93,7 @@ class Nodes():
         return Command(goto= goto, update= update)
         
 
-    def interrupts_handler(self, state: State):
+    def interrupts_handler(self, state: EmailResponseState):
         author, to, subject, email_thread, id = parse_email(state["input_email"])
         email = format_email_markdown(subject, author, to, email_thread, id)
 
@@ -128,7 +129,7 @@ class Nodes():
         return Command(goto= goto, update= update)
 
 
-    def writer(self, state: State):
+    def writer(self, state: Union[EmailResponseState, SendEmailState]):
         llm = self.model.with_structured_output(WriterOutputSchema)
         messages = [SystemMessage(content= writer_system_prompt.format(writer_instruction=default_writer_instruction))]\
                                                                 +                                                      \
@@ -154,7 +155,7 @@ class Nodes():
             )
         
         
-    def send_response(self, state: State):
+    def send_response(self, state: Union[EmailResponseState, SendEmailState]):
         request = interrupt(
             {
                 "draft_response": state["draft_response"],
@@ -163,6 +164,11 @@ class Nodes():
         )
         
         if request["flag"] is True:
+            
+            # Check if output_schema exists and has the required structure
+            if not state.get('output_schema') or not hasattr(state['output_schema'], 'gmail_schema'):
+                print("Error: Missing or invalid output_schema in state")
+                return Command(goto=END, update={"send_decision": "error"})
             
             to = state['output_schema'].gmail_schema.to
             subject = state['output_schema'].gmail_schema.subject
@@ -194,19 +200,23 @@ class Nodes():
             except Exception as e:
                 print(f"Error sending email: {e}")
                 # Fallback to original method if the above fails
-                tool = GmailSendMessage(api_resource= self.gmail.api_resource)
-                tool.invoke(
-                    {
-                        "to": to,
-                        "subject": subject,
-                        "message": message
-                    }
-                )
+                try:
+                    tool = GmailSendMessage(api_resource= self.gmail.api_resource)
+                    tool.invoke(
+                        {
+                            "to": to,
+                            "subject": subject,
+                            "message": message
+                        }
+                    )
+                    print(f"Email sent successfully using fallback method!")
+                except Exception as fallback_error:
+                    print(f"Fallback method also failed: {fallback_error}")
+                    return Command(goto=END, update={"send_decision": "error"})
             
             return Command(goto= goto, update= update)
         
         elif request["flag"] is False:
-            # ... rest of the method remains the same
             goto = "writer"            
             previous_response = AIMessage(
                 content= state["draft_response"]

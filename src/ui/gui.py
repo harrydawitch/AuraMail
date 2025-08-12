@@ -128,7 +128,7 @@ ASSETS_PATH = OUTPUT_PATH / Path("ui/assets")
 
 # UI Configuration
 class UIConfig:
-    WINDOW_SIZE = "1000x600"
+    WINDOW_SIZE = "1270x720"
     TITLE = "AuraMail"
     APPEARANCE_MODE = "dark"
     
@@ -144,6 +144,8 @@ class UIConfig:
     ACTION_BUTTON_HOVER = "#3D8F20"
     REJECT_BUTTON_COLOR = "#8B0000"
     REJECT_BUTTON_HOVER = "#A52A2A"
+    GENERATE_DRAFT_BUTTON_COLOR = "#1568F8"
+    GENERATE_DRAFT_BUTTON_HOVER = "#0041B3"
     
     # Fonts
     BUTTON_FONT = ("Noto Sans", 18, "bold")
@@ -161,20 +163,20 @@ class ContextDialog(CTkToplevel):
         super().__init__(parent)
         self.callback = callback
         self.result = None
-
+        
         self.title(title)
-        self.geometry("500x300")
         self.transient(parent)
         self.grab_set()
-
-        # Center the dialog
-        self.update_idletasks()
-        x = (self.winfo_screenwidth() // 2) - (500 // 2)
-        y = (self.winfo_screenheight() // 2) - (300 // 2)
-        self.geometry(f"500x300+{x}+{y}")
         
-        self.after_idle(self._center_dialog)
+        # Set minimum size to prevent too small windows
+        self.minsize(600, 300)
+        
+        # Create widgets first
         self._create_widgets(prompt)
+        
+        # Set size and center after widgets are created
+        self.geometry("600x300")
+        self.after_idle(self._center_dialog)
     
     def _create_widgets(self, prompt: str):
         """Create dialog widgets"""
@@ -220,12 +222,12 @@ class ContextDialog(CTkToplevel):
     def _center_dialog(self):
         """Center the dialog on screen"""
         self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
+        # Use the intended size (1200x800) for centering
+        width = 600
+        height = 400
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
-
 
     def _submit(self):
         """Handle submit with improved error handling"""
@@ -248,10 +250,7 @@ class ContextDialog(CTkToplevel):
 
     def _run_callback(self, context):
         """Run callback in separate thread"""
-        # try:
         self.callback(context)
-        # except Exception as e:
-            # print(f"Error in callback: {e}")
 
     def _cancel(self):
         """Handle cancel button"""
@@ -389,7 +388,7 @@ class Taskbar:
         self.taskbar_frame.pack(side="top", fill="x")
         
         # Configure grid columns for equal spacing (4 columns for main buttons)
-        for i in range(4):
+        for i in range(5):
             self.taskbar_frame.grid_columnconfigure(i, weight=1)
         
         # Create buttons
@@ -397,7 +396,8 @@ class Taskbar:
             ("home", "Home", 0),
             ("notify", "Notify", 1),
             ("ignore", "Ignore", 2),
-            ("human", "Pending", 3)
+            ("human", "Pending", 3),
+            ("send", "Send Email", 4)
         ]
         
         for key, text, column in button_configs:
@@ -504,7 +504,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            height=500,
+            #height=500,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -525,7 +525,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            height=500,
+            #height=500,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -546,7 +546,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            height=500,
+            #height=500,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -556,7 +556,7 @@ class EmailDetailView:
         
         # Action frame for buttons (below sender label)
         self.action_frame = CTkFrame(self.content_frame, fg_color="transparent")
-        self.action_frame.pack(fill="x", pady=(0, 15))
+        self.action_frame.pack(fill="both", pady=(0, 15))
         
         # Set default content
         self._set_default_content()
@@ -836,6 +836,308 @@ class EmailDetailView:
             widget= widget.master
         return None
 
+class SendEmailView:
+    """Manages the send email form view"""
+    def __init__(self, parent: CTkFrame, on_back: Callable):
+        self.parent = parent
+        self.on_back = on_back
+        
+        self.content_frame = None
+        self.header_frame = None
+        self.back_btn = None
+        
+        self.from_entry = None
+        self.to_entry = None
+        self.prompt_text = None
+        self.draft_text = None
+
+        self.current_workflow_id = None  # Add this line
+
+        self._create_widgets()
+    
+    def _create_widgets(self):
+        """Create the send email form widgets"""
+        # Main content frame
+        self.content_frame = CTkFrame(self.parent, fg_color=UIConfig.CONTENT_BG)
+        
+        # Header frame
+        self.header_frame = CTkFrame(self.content_frame, fg_color=UIConfig.CONTENT_BG)
+        self.header_frame.pack(fill="x", padx=30, pady=(30, 0))
+        
+        # Back button
+        self.back_btn = CTkButton(
+            self.header_frame, 
+            text="← Back", 
+            width=80, 
+            command=self.on_back,
+            fg_color="#282b30"
+        )
+        self.back_btn.pack(anchor="w", padx=0, pady=0)
+        
+        # Title
+        title_label = CTkLabel(
+            self.header_frame, 
+            text="Send Email", 
+            font=UIConfig.SUBJECT_FONT, 
+            anchor="w"
+        )
+        title_label.pack(fill="x", pady=(20, 5))
+        
+        # Main form frame with 2-column layout
+        form_frame = CTkFrame(self.content_frame, fg_color=UIConfig.CONTENT_BG)
+        form_frame.pack(fill="both", expand=True, padx=30, pady=(20, 30))
+        
+        # Configure grid columns: Left column (form), spacer, Right column (draft)
+        form_frame.grid_columnconfigure(0, weight=1)  # Left column - form fields
+        form_frame.grid_columnconfigure(1, weight=0, minsize=20)  # Spacer
+        form_frame.grid_columnconfigure(2, weight=1)  # Right column - draft
+        form_frame.grid_rowconfigure(0, weight=1)
+        
+        # LEFT COLUMN - Form Fields
+        left_frame = CTkFrame(form_frame, fg_color="transparent")
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        
+        # From field
+        from_label = CTkLabel(left_frame, text="From:", font=UIConfig.SENDER_FONT)
+        from_label.pack(anchor="w", pady=(0, 5))
+        
+        self.from_entry = CTkEntry(
+            left_frame, 
+            height=35, 
+            font=UIConfig.BODY_FONT,
+            placeholder_text="your-email@example.com"
+        )
+        self.from_entry.pack(fill="x", pady=(0, 15))
+        
+        # To field
+        to_label = CTkLabel(left_frame, text="To:", font=UIConfig.SENDER_FONT)
+        to_label.pack(anchor="w", pady=(0, 5))
+        
+        self.to_entry = CTkEntry(
+            left_frame, 
+            height=35, 
+            font=UIConfig.BODY_FONT,
+            placeholder_text="recipient@example.com"
+        )
+        self.to_entry.pack(fill="x", pady=(0, 10))
+        
+        # AI Prompt field
+        prompt_label = CTkLabel(left_frame, text="AI Prompt (describe what email you want):", font=UIConfig.SENDER_FONT)
+        prompt_label.pack(anchor="w", pady=(0, 0), side= 'top')
+        
+        self.prompt_text = CTkTextbox(
+            left_frame,
+            font=UIConfig.BODY_FONT,
+            corner_radius=8,
+            border_spacing=5,
+            spacing1=2, spacing2=2, spacing3=2
+            
+        )
+        self.prompt_text.pack(fill="both", pady=(0, 15), expand= True)
+        
+        # Generate button
+        generate_btn = CTkButton(
+            left_frame,
+            text="Generate Draft",
+            height=35,
+            font=UIConfig.ACTION_BUTTON_FONT,
+            fg_color=UIConfig.GENERATE_DRAFT_BUTTON_COLOR,
+            hover_color=UIConfig.GENERATE_DRAFT_BUTTON_HOVER,
+            command=self._generate_draft
+        )
+        generate_btn.pack(anchor="w", pady=(5, 0))
+        
+        # RIGHT COLUMN - Draft Email
+        right_frame = CTkFrame(form_frame, fg_color="transparent")
+        right_frame.grid(row=0, column=2, sticky="nsew", padx=(10, 0))
+        
+        # Draft response field
+        draft_label = CTkLabel(right_frame, text="Draft Email (AI Generated):", font=UIConfig.SENDER_FONT)
+        draft_label.pack(anchor="w", pady=(0, 5))
+        
+        self.draft_text = CTkTextbox(
+            right_frame,
+            font=UIConfig.BODY_FONT,
+            corner_radius=8,
+            state="disabled",
+            border_spacing=5,
+            spacing1=2, spacing2=2, spacing3=2
+        )
+        self.draft_text.pack(fill="both", expand=True, pady=(0, 15))
+        
+        # Add placeholder text to show it's empty initially
+        self.draft_text.configure(state="normal")
+        self.draft_text.insert("1.0", "Click 'Generate Draft' to create an AI-generated email...")
+        self.draft_text.configure(state="disabled", text_color="gray")
+        
+        # Button frame (under draft email box)
+        button_frame = CTkFrame(right_frame, fg_color="transparent")
+        button_frame.pack(fill="x")
+        
+        # Send button (left)
+        send_btn = CTkButton(
+            button_frame,
+            text="Send Email",
+            height=35,
+            font=UIConfig.ACTION_BUTTON_FONT,
+            fg_color=UIConfig.ACTION_BUTTON_COLOR,
+            hover_color=UIConfig.ACTION_BUTTON_HOVER,
+            command=self._send_email
+        )
+        send_btn.pack(side="left", padx=(0, 10))
+        
+        # Clear button (right)
+        clear_btn = CTkButton(
+            button_frame,
+            text="Reject",
+            height=35,
+            font=UIConfig.ACTION_BUTTON_FONT,
+            fg_color=UIConfig.REJECT_BUTTON_COLOR,
+            hover_color=UIConfig.REJECT_BUTTON_HOVER,
+            command=self._reject_draft
+        )
+        clear_btn.pack(side="left")
+    
+    def _generate_draft(self):
+        """Generate draft email using AI"""
+        try:
+            from_email = self.from_entry.get().strip()
+            to_email = self.to_entry.get().strip()
+            users_intent = self.prompt_text.get("1.0", END).strip()
+            
+            if not all([from_email, to_email, users_intent]):
+                messagebox.showwarning("Warning", "Please fill in From, To, and AI Prompt fields.")
+                return
+            
+            # Get root window to send command
+            root = self._get_root()
+            if root:
+                # Generate unique workflow ID for tracking
+                import uuid
+                workflow_id = str(uuid.uuid4())
+                
+                # Send command to backend to generate email
+                type = "generate_email"
+                data = {
+                    "from_email": from_email,
+                    "to_email": to_email,
+                    "users_intent": users_intent,
+                    "workflow_id": workflow_id  # Add this for tracking
+                }
+                root.send_commands(type, data)
+                
+                # Store workflow_id for later use
+                self.current_workflow_id = workflow_id
+                
+                # Show loading message in draft
+                self._show_loading_draft()
+            else:
+                messagebox.showerror("Error", "Unable to connect to AI service.")
+                
+        except Exception as e:
+            print(f"Error generating draft: {e}")
+            messagebox.showerror("Error", "Failed to generate draft email.")
+    
+    def _show_loading_draft(self):
+        self.draft_text.configure(state="normal", text_color="orange")
+        self.draft_text.delete("1.0", END)
+        self.draft_text.insert("1.0", "🤖 Generating draft email... Please wait.")
+        self.draft_text.configure(state="disabled")
+    
+    def _send_email(self):
+        """Send the email (approve the draft)"""
+        try:
+            draft_content = self.draft_text.get("1.0", END).strip()
+            
+            if not hasattr(self, 'current_workflow_id'):
+                messagebox.showwarning("Warning", "Please generate a draft first.")
+                return
+            
+            if not draft_content or "Click 'Generate Draft'" in draft_content:
+                messagebox.showwarning("Warning", "Please generate a draft first.")
+                return
+            
+            # Get root window to send command
+            root = self._get_root()
+            if root:
+                # Send approve command to backend
+                type = "approve_draft"
+                data = {
+                    "flag": True,
+                    "workflow_id": self.current_workflow_id
+                }
+                root.send_commands(type, data)
+                
+                messagebox.showinfo("Success", "Email sent successfully!")
+                self._clear_form()
+            else:
+                messagebox.showerror("Error", "Unable to send email.")
+                
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            messagebox.showerror("Error", "Failed to send email.")
+
+    def _reject_draft(self):
+        """Reject current draft and ask for feedback"""
+        def on_context_provided(feedback: str):
+            """Callback function called when user provides feedback"""
+            root = self._get_root()
+            
+            # Send command to backend with user's feedback
+            type = "reject_draft"
+            data = {
+                "flag": False,
+                "feedback": feedback,
+                "workflow_id": self.current_workflow_id
+            }
+            
+            self._show_loading_draft()
+            root.send_commands(type, data)
+                
+        # Show context dialog with callback
+        dialog = ContextDialog(
+            self.parent.master.master,
+            title="Provide feedback",
+            prompt="Please provide feedback to help the AI improve the response:",
+            callback=on_context_provided  
+        )
+
+    def _clear_form(self):
+        """Clear all form fields"""
+        self.from_entry.delete(0, END)
+        self.to_entry.delete(0, END)
+        self.prompt_text.delete("1.0", END)
+        
+        # Reset draft box to initial state
+        self.draft_text.configure(state="normal", text_color="gray")
+        self.draft_text.delete("1.0", END)
+        self.draft_text.insert("1.0", "Click 'Generate Draft' to create an AI-generated email...")
+        self.draft_text.configure(state="disabled")
+    
+    def update_draft(self, draft_content: str):
+        """Update the draft text field with generated content"""
+        self.draft_text.configure(state="normal", text_color="white")  # Normal text color
+        self.draft_text.delete("1.0", END)
+        self.draft_text.insert("1.0", draft_content)
+        self.draft_text.configure(state="normal")  # Allow editing of generated draft
+    
+    def _get_root(self):
+        """Get root window"""
+        widget = self.parent
+        while widget:
+            if hasattr(widget, "frontend_communicator"):
+                return widget
+            widget = widget.master
+        return None
+    
+    def show(self):
+        """Show the send email view"""
+        self.content_frame.pack(fill="both", expand=True, padx=0, pady=0)
+    
+    def hide(self):
+        """Hide the send email view"""
+        self.content_frame.pack_forget()
+
 class EmailRow:
     """Represents a single email row in the grid"""
     def __init__(self, parent: CTkFrame, email: EmailData, index: int, on_click: Callable, 
@@ -1097,6 +1399,7 @@ class EmailAgentGUI(CTk):
         self.selected_email_index = None
         self._processing_response = False
 
+
         self._setup_window()
         self._create_components()
         self._initialize_app()
@@ -1124,7 +1427,8 @@ class EmailAgentGUI(CTk):
             "home": self.show_home,
             "notify": lambda: self.load_emails("notify"),
             "ignore": lambda: self.load_emails("ignore"),
-            "human": lambda: self.load_emails("human")
+            "human": lambda: self.load_emails("human"),
+            "send": self.show_send_email
         }
         self.taskbar = Taskbar(self, taskbar_callbacks)
         
@@ -1138,6 +1442,10 @@ class EmailAgentGUI(CTk):
         # Email detail view
         self.email_detail = EmailDetailView(self.main_frame, self.show_email_list)
         
+        # Send Email view
+        self.send_email_view = SendEmailView(self.main_frame, self.show_email_list)
+
+        
     
     def _initialize_app(self):
         """Initialize the application"""
@@ -1146,6 +1454,18 @@ class EmailAgentGUI(CTk):
     def show_home(self):
         """Show the home view with all emails"""
         self.load_emails("home")
+
+    def show_send_email(self):
+        """Show the send email view"""
+        self.current_category = "send"
+        self.taskbar.set_active_button("send")
+        
+        # Hide other views
+        self.email_grid.hide()
+        self.email_detail.hide()
+        
+        # Show send email view
+        self.send_email_view.show()
     
     def load_emails(self, category: str):
         """Load emails for a specific category"""
@@ -1212,8 +1532,23 @@ class EmailAgentGUI(CTk):
     def show_email_list(self):
         """Show the email list grid"""
         self.email_detail.hide()
+        self.send_email_view.hide() 
         self.email_grid.show()
         self.selected_email_index = None
+
+        # Only show grid if not in send email mode
+        if self.current_category != "send":
+            self.email_grid.show()
+        else:
+            # If coming back from send email, go to home
+            self.show_home()
+        
+        self.selected_email_index = None
+
+    def handle_draft_generated(self, draft_content: str):
+        """Handle draft email generated by AI"""
+        if hasattr(self, 'send_email_view'):
+            self.send_email_view.update_draft(draft_content)
         
     def _start_event_polling(self):
         """Start polling for events from backend"""
@@ -1305,7 +1640,7 @@ class EmailAgentGUI(CTk):
   
 def app():
     """Main entry point"""
-    app = EmailAgentGUI()
+    app = EmailAgentGUI(Communicator())
     app.mainloop()
 
 if __name__ == "__main__":
