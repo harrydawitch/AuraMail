@@ -1,8 +1,29 @@
 import os
 import base64
-import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
+
+from windows_toasts import WindowsToaster, Toast, ToastAudio, AudioSource
+
+toaster = WindowsToaster("AuraMail")
+toast = Toast()
+toast.text_fields = ["New email"]
+
+# Use a more noticeable sound
+toast.audio = ToastAudio(AudioSource.SMS, looping=False)
+
+toaster.show_toast(toast)
+
+
+class Notification:
+    def __init__(self, state):
+        self.state = state
+        self.toaster = ...
+                
+    def play_sound(self):
+        pass
+    
 
 def _convert_to_html(text_body):
     """
@@ -29,6 +50,13 @@ def _convert_to_html(text_body):
     
     return html_body
 
+def get_display_name():
+    """
+    Get the display name for emails from environment variable
+    Default to 'AI Assistant' if not set
+    """
+    return os.environ.get("EMAIL_DISPLAY_NAME", "AI Assistant")
+
 def create_formatted_email(to_email, subject, body):
     """
     Create a properly formatted email message with both HTML and plain text parts
@@ -37,7 +65,13 @@ def create_formatted_email(to_email, subject, body):
     msg = MIMEMultipart('alternative')
     msg['To'] = to_email
     msg['Subject'] = subject
-    msg['From'] = 'me'
+    
+    # Get display name and email address
+    display_name = get_display_name()
+    my_email = os.environ.get("MY_EMAIL", "me")
+    
+    # Format the 'From' field with display name
+    msg['From'] = formataddr((display_name, my_email))
     
     # Create plain text version (keep line breaks)
     text_body = body.replace('\\n', '\n')  # Convert literal \n to actual newlines

@@ -67,6 +67,19 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
    ![Publish App](assets/3_addition.png)
    - Go to **"Publish app"**
    - Click **"Confirm"** to make it available
+  
+   
+   
+   **You also have to Enable Gmail API**
+    ![Enable GmailAPI](assets/4.1.png)
+    
+    Search for GmailAPI
+    ![Enable GmailAPI](assets/4.2.png)
+    ![Enable GmailAPI](assets/4.3.png)
+
+    **Enable it**
+    ![Enable GmailAPI](assets/4.4.png)
+
 
 </details>
 

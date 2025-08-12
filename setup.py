@@ -51,7 +51,7 @@ TOKEN_PATH = APP_DIR / 'token.json'
 CREDENTIALS_EXAMPLE_PATH = Path('credentials.example.json')
 README_PATH = Path('README.md')
 ENV_PATH = get_app_dir() / ".env"
-
+VBS_LAUNCHER_PATH = APP_DIR / "AuraMail.vbs"
 
 
 GCP_CREDENTIALS_URL = 'https://console.cloud.google.com/apis/credentials'
@@ -70,8 +70,139 @@ def open_in_browser(url):
         print("Failed to open browser automatically.", e)
 
 
+def detect_python_environment():
+    """
+    Detect the Python environment and return the appropriate command to run the app.
+    Returns a tuple: (python_command, activation_command, working_directory)
+    """
+    current_dir = APP_DIR.resolve()
+    
+    # Check for virtual environment in common locations
+    venv_paths = [
+        current_dir / "venv",
+        current_dir / ".venv", 
+        current_dir / "env",
+        current_dir / ".env_folder"  # avoid conflict with .env file
+    ]
+    
+    # Find existing virtual environment
+    for venv_path in venv_paths:
+        if platform.system() == "Windows":
+            activate_script = venv_path / "Scripts" / "activate.bat"
+            python_exe = venv_path / "Scripts" / "python.exe"
+        else:
+            activate_script = venv_path / "bin" / "activate"
+            python_exe = venv_path / "bin" / "python"
+            
+        if activate_script.exists() and python_exe.exists():
+            if platform.system() == "Windows":
+                return (
+                    "python main.py",
+                    f'"{activate_script}"',
+                    str(current_dir)
+                )
+            else:
+                return (
+                    "python main.py", 
+                    f'source "{activate_script}"',
+                    str(current_dir)
+                )
+    
+    # No virtual environment found, use system Python
+    python_cmd = sys.executable if sys.executable else "python"
+    return (
+        f'"{python_cmd}" main.py',
+        None,  # No activation needed
+        str(current_dir)
+    )
 
-def update_env_file(openai_key: str, my_email: str):
+
+def generate_launcher_file():
+    """
+    Generate platform-specific launcher file for AuraMail.
+    """
+    python_cmd, activation_cmd, working_dir = detect_python_environment()
+    
+    if platform.system() == "Windows":
+        generate_windows_launcher(python_cmd, activation_cmd, working_dir)
+    else:
+        generate_unix_launcher(python_cmd, activation_cmd, working_dir)
+
+
+def generate_windows_launcher(python_cmd, activation_cmd, working_dir):
+    """Generate Windows VBS launcher file."""
+    
+    if activation_cmd:
+        # With virtual environment - use proper VBS quote escaping
+        # In VBS, quotes inside strings need to be doubled ("")
+        escaped_activation = activation_cmd.replace('"', '""')
+        vbs_content = f'''Set objShell = CreateObject("Wscript.Shell")
+objShell.CurrentDirectory = "{working_dir}"
+objShell.Run "cmd /c {escaped_activation} && {python_cmd}", 0, True'''
+    else:
+        # Without virtual environment
+        vbs_content = f'''Set objShell = CreateObject("Wscript.Shell")
+objShell.CurrentDirectory = "{working_dir}"
+objShell.Run "{python_cmd}", 0, True'''
+    
+    # Write VBS file
+    with open(VBS_LAUNCHER_PATH, 'w', encoding='utf-8') as f:
+        f.write(vbs_content)
+    
+    print(f"✓ Generated Windows launcher: {VBS_LAUNCHER_PATH}")
+    
+    # Also generate a batch file alternative (more reliable for complex paths)
+    bat_path = APP_DIR / "AuraMail.bat"
+    if activation_cmd:
+        # Remove quotes from activation_cmd for batch file
+        clean_activation = activation_cmd.strip('"')
+        bat_content = f'''@echo off
+cd /d "{working_dir}"
+call "{clean_activation}"
+{python_cmd}
+pause'''
+    else:
+        bat_content = f'''@echo off
+cd /d "{working_dir}"
+{python_cmd}
+pause'''
+    
+    with open(bat_path, 'w', encoding='utf-8') as f:
+        f.write(bat_content)
+    
+    print(f"✓ Generated Windows batch file: {bat_path}")
+    print("  💡 Tip: Use the .bat file if .vbs has issues with complex paths")
+
+
+def generate_unix_launcher(python_cmd, activation_cmd, working_dir):
+    """Generate Unix/Linux/macOS shell script launcher."""
+    
+    launcher_path = APP_DIR / "AuraMail.sh"
+    
+    if activation_cmd:
+        script_content = f'''#!/bin/bash
+cd "{working_dir}"
+{activation_cmd}
+{python_cmd}'''
+    else:
+        script_content = f'''#!/bin/bash
+cd "{working_dir}"
+{python_cmd}'''
+    
+    with open(launcher_path, 'w', encoding='utf-8') as f:
+        f.write(script_content)
+    
+    # Make script executable
+    os.chmod(launcher_path, 0o755)
+    
+    print(f"✓ Generated Unix launcher: {launcher_path}")
+    print(f"  To run: ./AuraMail.sh or bash AuraMail.sh")
+
+
+
+
+
+def update_env_file(openai_key: str, my_email: str, username: str):
     """
     Create or update the .env file with the provided OpenAI key and email.
     """
@@ -85,13 +216,13 @@ def update_env_file(openai_key: str, my_email: str):
 
     env_data["OPENAI_API_KEY"] = openai_key
     env_data["MY_EMAIL"] = my_email
+    env_data["EMAIL_DISPLAY_NAME"]= username
 
     with open(ENV_PATH, "w") as f:
         for k, v in env_data.items():
             f.write(f"{k}={v}\n")
 
-    print(f".env file updated at {ENV_PATH}")
-
+    print(f"✓ .env file updated at {ENV_PATH}")
 
 
 def ask_user_for_credentials_file():
@@ -122,7 +253,7 @@ def copy_credentials_file(src: Path):
     ensure_app_dir()
     dest = CREDENTIALS_PATH
     shutil.copy2(str(src), str(dest))
-    print(f"Copied credentials.json to {dest}")
+    print(f"✓ Copied credentials.json to {dest}")
     return dest
 
 
@@ -130,7 +261,7 @@ def save_token(creds):
     ensure_app_dir()
     with open(TOKEN_PATH, 'w') as f:
         f.write(creds.to_json())
-    print(f"Saved token to {TOKEN_PATH}")
+    print(f"✓ Saved token to {TOKEN_PATH}")
 
 
 def run_oauth_flow():
@@ -160,7 +291,7 @@ def ensure_token():
         creds = None
 
     if creds and creds.valid:
-        print("Existing token is valid.")
+        print("✓ Existing token is valid.")
         return creds
 
     if creds and creds.expired and creds.refresh_token:
@@ -178,7 +309,7 @@ def ensure_token():
 
 def write_readme_and_example():
     if README_PATH.exists():
-        print("README.md already exists in repo root — not overwriting.")
+        print("✓ README.md already exists in repo root — not overwriting.")
     else:
         print("Writing a quick README.md to repo root...")
         README_CONTENT = f"""
@@ -193,7 +324,7 @@ This repository contains a local desktop Python app that accesses the user's Gma
 1. Go to the Google Cloud Console: enable the Gmail API and create OAuth credentials (Desktop app):
    - Enable the Gmail API: {GCP_ENABLE_API_URL}
    - Create OAuth credentials: {GCP_CREDENTIALS_URL}
-2. Download the `credentials.json` and run `python setup_oauth.py`.
+2. Download the `credentials.json` and run `python setup.py`.
 3. The script will copy `credentials.json` into a local app folder and run the OAuth consent flow. After consent a `token.json` is saved for future runs.
 
 ## Where files are stored (defaults)
@@ -213,7 +344,7 @@ This repository contains a local desktop Python app that accesses the user's Gma
 
 """
         README_PATH.write_text(README_CONTENT, encoding='utf-8')
-        print(f"Wrote {README_PATH}")
+        print(f"✓ Wrote {README_PATH}")
 
     if not CREDENTIALS_EXAMPLE_PATH.exists():
         print("Writing credentials.example.json (safe to commit) ...")
@@ -229,9 +360,9 @@ This repository contains a local desktop Python app that accesses the user's Gma
             }
         }
         CREDENTIALS_EXAMPLE_PATH.write_text(json.dumps(example, indent=2))
-        print(f"Wrote {CREDENTIALS_EXAMPLE_PATH}")
+        print(f"✓ Wrote {CREDENTIALS_EXAMPLE_PATH}")
     else:
-        print("credentials.example.json already exists — not overwriting.")
+        print("✓ credentials.example.json already exists — not overwriting.")
 
 
 def setup_interactive():
@@ -239,7 +370,7 @@ def setup_interactive():
     ensure_app_dir()
 
     if CREDENTIALS_PATH.exists():
-        print(f"Found credentials.json at {CREDENTIALS_PATH}")
+        print(f"✓ Found credentials.json at {CREDENTIALS_PATH}")
     else:
         print("No credentials.json found in app folder.")
         print("I can open the Google Cloud Console page where you can create OAuth credentials for a Desktop app.")
@@ -265,29 +396,54 @@ def setup_interactive():
     try:
         creds = ensure_token()
         if creds:
-            print("OAuth setup completed successfully!")
-            print(f"credentials.json and token.json are stored in: {APP_DIR}")
+            print("✓ OAuth setup completed successfully!")
+            print(f"✓ credentials.json and token.json are stored in: {APP_DIR}")
         else:
-            print("OAuth setup did not complete. See messages above.")
+            print("! OAuth setup did not complete. See messages above.")
+            return
             
         print("\n=== Configure OpenAI API key and your email ===")
         openai_key = input("Enter your OpenAI API key: ").strip()
         my_email = input("Enter your email: ").strip()
-        update_env_file(openai_key, my_email)
+        username = input("Enter your username: ").strip()
+        update_env_file(openai_key, my_email, username)
             
     except Exception as e:
         print("Error during OAuth flow:", e)
+        return
+
+    # Generate launcher files
+    print("\n=== Generating launcher files ===")
+    try:
+        generate_launcher_file()
+        
+    except Exception as e:
+        print(f"! Error generating launcher files: {e}")
 
     # write helpful repo files
     write_readme_and_example()
-    print("\nSetup finished. Reminder: add the following paths to your .gitignore if you will commit this repo:")
-    print(f"  {CREDENTIALS_PATH}")
-    print(f"  {TOKEN_PATH}")
+    
+    print("\n" + "="*50)
+    print("✓ Setup completed successfully!")
+    print("="*50)
+    
+    if platform.system() == "Windows":
+        print(f"🚀 To start AuraMail, double-click: {VBS_LAUNCHER_PATH.name}")
+        print(f"   Alternative: double-click AuraMail.bat")
+    else:
+        print(f"🚀 To start AuraMail, run: ./AuraMail.sh")
+        print(f"   Or: bash AuraMail.sh")
+    
+    print(f"\n📁 All files are in: {APP_DIR}")
+    print("\n📝 Reminder: add the following to your .gitignore:")
+    print(f"   {CREDENTIALS_PATH.name}")
+    print(f"   {TOKEN_PATH.name}")
+    print(f"   .env")
 
 
 if __name__ == '__main__':
     try:
         setup_interactive()
     except KeyboardInterrupt:
-        print("Setup cancelled by user.")
+        print("\nSetup cancelled by user.")
         sys.exit(1)
