@@ -504,7 +504,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            #height=500,
+            height=470,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -525,7 +525,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            #height=500,
+            height=470,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -546,7 +546,7 @@ class EmailDetailView:
             self.body_content,
             font=UIConfig.BODY_FONT,
             wrap="word",
-            #height=500,
+            height=470,
             corner_radius=15,
             border_width=1,
             border_spacing=5,
@@ -744,7 +744,7 @@ class EmailDetailView:
 
     def _handle_approve(self):
         root = self._get_root()
-        type = "approve_draft"
+        type = "approve"
         data = {
             "flag": True,
             "workflow_id": self.current_email.workflow_id
@@ -761,15 +761,14 @@ class EmailDetailView:
     def _handle_reject(self):
         def on_feedback_provided(feedback: str):
             root = self._get_root()
-            type = "reject_draft"
+            type = "reject"
             data = {
                 "flag": False,
                 "feedback": feedback,
                 "workflow_id": self.current_email.workflow_id
             }
-                
-            if self.action_callback:
-                self.action_callback("refresh")
+
+            self._show_loading_draft()
                 
             root.send_commands(type, data)
 
@@ -780,8 +779,13 @@ class EmailDetailView:
             prompt="Please provide feedback to help the AI improve the response:",
             callback=on_feedback_provided
         )
-        
-    
+
+    def _show_loading_draft(self):
+        self.draft_text.configure(state="normal", text_color="orange")
+        self.draft_text.delete("1.0", END)
+        self.draft_text.insert("1.0", "🤖 Generating draft email... Please wait.")
+        self.draft_text.configure(state="disabled")        
+
     def _show_draft_response(self, draft_response: str):
         """Show the draft response section"""
         
@@ -797,7 +801,7 @@ class EmailDetailView:
         self.draft_text.grid(row=1, column=4, sticky="nsew", pady=(0, 0))
         
         # Update draft content
-        self.draft_text.configure(state="normal")
+        self.draft_text.configure(state="normal", text_color="orange")
         self.draft_text.delete("1.0", END)
         self.draft_text.insert("1.0", draft_response)
         self.draft_text.configure(state="disabled")
@@ -1308,7 +1312,7 @@ class EmailRow:
         """Handle approve button click"""
 
         root = self._get_root()
-        type = "approve_draft"
+        type = "approve"
         data = {
             "flag": True,
             "workflow_id": self.email.workflow_id
@@ -1329,7 +1333,7 @@ class EmailRow:
             root = self._get_root()
             
             # Send command to backend with user's context
-            type = "reject_draft"
+            type = "reject"
             data = {
                 "flag": False,
                 "feedback": feedback,

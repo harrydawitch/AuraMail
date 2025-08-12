@@ -112,6 +112,7 @@ class BackendCommunicator(Communicator):
         
         # Handle send email rewrite
         elif event_results.get("send_decision") == "rewrite" and not event_results.get("input_email"):
+            print(f"\n\n\n{event_results.keys()}\n\n\n")
             draft = event_results.get("draft_response")
             data = {"draft": draft}
             self.send_events(type_event="send_email_rewrite", data=data)
@@ -387,9 +388,7 @@ class FrontendCommunicator(Communicator):
             email = EmailService.get_email("human", email_id)
             EmailService.regenerate_draft_response(email, draft)
             
-            if self.gui.current_category == "human":
-                self.gui.load_emails("human")
-
+            self.gui.email_detail._show_draft_response(draft)
                 
     def has_pending_events(self):
         """Check if there are pending events without removing them"""
