@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AuraMail
 
 An intelligent email automation system that monitors your Gmail inbox, classifies emails using AI, and helps you manage responses efficiently with a modern desktop GUI.
@@ -242,3 +243,6 @@ For issues and questions:
 ---
 
 **Note**: This application requires Gmail API access and OpenAI API key. Ensure you comply with both services' terms of use and rate limits.
+=======
+# **AuraMail**
+>>>>>>> 815021639ecec10d69d47809869bef2a5e2b4116
