@@ -25,7 +25,7 @@ except Exception:
     Credentials = None
     Request = None
 
-APP_NAME = "AuraMail"  # <--- change this to your app's short name if you want
+APP_NAME = "SmartEmailBot"  # <--- change this to your app's short name if you want
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
@@ -51,7 +51,7 @@ TOKEN_PATH = APP_DIR / 'token.json'
 CREDENTIALS_EXAMPLE_PATH = Path('credentials.example.json')
 README_PATH = Path('README.md')
 ENV_PATH = get_app_dir() / ".env"
-VBS_LAUNCHER_PATH = APP_DIR / "AuraMail.vbs"
+VBS_LAUNCHER_PATH = APP_DIR / "SmartEmailBot.vbs"
 
 
 GCP_CREDENTIALS_URL = 'https://console.cloud.google.com/apis/credentials'
@@ -119,7 +119,7 @@ def detect_python_environment():
 
 def generate_launcher_file():
     """
-    Generate platform-specific launcher file for AuraMail.
+    Generate platform-specific launcher file for SmartEmailBot.
     """
     python_cmd, activation_cmd, working_dir = detect_python_environment()
     
@@ -152,7 +152,7 @@ objShell.Run "{python_cmd}", 0, True'''
     print(f"✓ Generated Windows launcher: {VBS_LAUNCHER_PATH}")
     
     # Also generate a batch file alternative (more reliable for complex paths)
-    bat_path = APP_DIR / "AuraMail.bat"
+    bat_path = APP_DIR / "SmartEmailBot.bat"
     if activation_cmd:
         # Remove quotes from activation_cmd for batch file
         clean_activation = activation_cmd.strip('"')
@@ -177,7 +177,7 @@ pause'''
 def generate_unix_launcher(python_cmd, activation_cmd, working_dir):
     """Generate Unix/Linux/macOS shell script launcher."""
     
-    launcher_path = APP_DIR / "AuraMail.sh"
+    launcher_path = APP_DIR / "SmartEmailBot.sh"
     
     if activation_cmd:
         script_content = f'''#!/bin/bash
@@ -196,7 +196,7 @@ cd "{working_dir}"
     os.chmod(launcher_path, 0o755)
     
     print(f"✓ Generated Unix launcher: {launcher_path}")
-    print(f"  To run: ./AuraMail.sh or bash AuraMail.sh")
+    print(f"  To run: ./SmartEmailBot.sh or bash SmartEmailBot.sh")
 
 
 
@@ -428,11 +428,11 @@ def setup_interactive():
     print("="*50)
     
     if platform.system() == "Windows":
-        print(f"🚀 To start AuraMail, double-click: {VBS_LAUNCHER_PATH.name}")
-        print(f"   Alternative: double-click AuraMail.bat")
+        print(f"🚀 To start SmartEmailBot, double-click: {VBS_LAUNCHER_PATH.name}")
+        print(f"   Alternative: double-click SmartEmailBot.bat")
     else:
-        print(f"🚀 To start AuraMail, run: ./AuraMail.sh")
-        print(f"   Or: bash AuraMail.sh")
+        print(f"🚀 To start SmartEmailBot, run: ./SmartEmailBot.sh")
+        print(f"   Or: bash SmartEmailBot.sh")
     
     print(f"\n📁 All files are in: {APP_DIR}")
     print("\n📝 Reminder: add the following to your .gitignore:")
