@@ -1,10 +1,12 @@
 import os
 import re
 import base64
+
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 
+from pathlib import Path
 from typing import List, Optional
 from plyer import notification
 
@@ -12,11 +14,41 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Notification:
-    def __init__(self, app_name: str = "SmartEmailBot", app_icon: str = "assets/icon.ico", timeout: int = 10):
+    def __init__(self, app_name: str = "SmartEmailBot", app_icon: str = None, timeout: int = 10):
         self.app_name = app_name
-        self.app_icon = app_icon
         self.timeout = timeout
         self.display_name = os.environ.get("EMAIL_DISPLAY_NAME")
+        
+        # Handle app_icon path properly
+        if app_icon is None:
+            # Try to find the icon file
+            assets_path = get_assets_path()
+            possible_icons = [
+                assets_path / "icon.ico",
+                assets_path / "icon.png", 
+                assets_path / "app_icon.ico",
+                assets_path / "app_icon.png"
+            ]
+            
+            self.app_icon = None  # Default to no icon
+            for icon_path in possible_icons:
+                if icon_path.exists():
+                    self.app_icon = str(icon_path.absolute())
+                    print(f"Using icon: {self.app_icon}")
+                    break
+            
+            if self.app_icon is None:
+                print("Warning: No icon file found for notifications")
+        else:
+            # Use provided path, but make it absolute if it's relative
+            icon_path = Path(app_icon)
+            if icon_path.is_absolute():
+                self.app_icon = str(icon_path) if icon_path.exists() else None
+            else:
+                # Relative path - resolve it properly
+                assets_path = get_assets_path()
+                full_path = assets_path / icon_path
+                self.app_icon = str(full_path.absolute()) if full_path.exists() else None
     
     def startup(self, notify_count: int, pending_count: int):
         """Send startup notification"""
@@ -25,6 +57,7 @@ class Notification:
             
         title = f"Welcome back {self.display_name}"
         message = f"You have {notify_count if notify_count else 0} notify email(s) and {pending_count if pending_count else 0} pending email(s)"
+        #print(message)
         self._send_notification(title, message)  
     
     def new_notify_email(self, sender: str, content: str):
@@ -40,7 +73,7 @@ class Notification:
                 title=title,
                 message=message,
                 app_name=self.app_name,
-                app_icon=self.app_icon,
+                app_icon=self.app_icon,  # This will now be None or a valid absolute path
                 timeout=timeout or self.timeout,
                 toast=False,
             )
@@ -180,3 +213,20 @@ def get_sender_name(sender):
     name = re.match(pattern, sender).group(1).strip('.')
         
     return name
+
+def get_assets_path():
+    """Get the absolute path to the assets directory"""
+    current_file = Path(__file__)
+    # Assuming utils.py is in src/ and assets is in src/ui/assets/
+    assets_path = current_file.parent / "ui" / "assets"
+    
+    # If that doesn't exist, try other common locations
+    if not assets_path.exists():
+        # Try parent directory structure
+        assets_path = current_file.parent.parent / "src" / "ui" / "assets"
+    
+    if not assets_path.exists():
+        # Try relative to project root
+        assets_path = current_file.parent.parent / "assets"
+    
+    return assets_path

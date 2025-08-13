@@ -1562,8 +1562,10 @@ class EmailAgentGUI(CTk):
     
     def __init__(self, communicator: Communicator):
         super().__init__()
+        print("START SET WM ATTRIBUTES")
         self.wm_attributes('-toolwindow', False)
         
+    
         try:
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SmartEmailBot.1.0")
@@ -1826,8 +1828,9 @@ class EmailAgentGUI(CTk):
     def _setup_app_icon(self):
         """Simple application icon setup"""
         try:
-            # Try ICO file first (best for Windows taskbar)
             ico_path = ASSETS_PATH / "icon.ico"
+            
+            print(f"ICO_PATH: {ico_path}")
             
             if ico_path.exists():
                 self.iconbitmap(str(ico_path))
@@ -1840,75 +1843,6 @@ class EmailAgentGUI(CTk):
         # Force window update
         self.update()
 
-    def _set_png_icon_enhanced(self, icon_path):
-        """Enhanced PNG icon setup for better taskbar display"""
-        try:
-            from PIL import Image, ImageTk
-            
-            # Load the PNG image
-            pil_image = Image.open(icon_path)
-            
-            # Create multiple sizes for Windows taskbar
-            sizes = [16, 24, 32, 48, 64, 128]
-            photos = []
-            
-            for size in sizes:
-                resized = pil_image.resize((size, size), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(resized)
-                photos.append(photo)
-            
-            # Set all sizes - Windows will pick the appropriate one
-            self.iconphoto(True, *photos)
-            
-            # Keep references to prevent garbage collection
-            self._icon_photos = photos
-            
-        except Exception as e:
-            print(f"Failed to set enhanced PNG icon: {e}")
-            raise
-
-    
-    def _create_programmatic_icon(self):
-        """Create an icon programmatically using PIL"""
-        try:
-            from PIL import Image, ImageDraw
-            import tempfile
-            
-            # Create icon image
-            size = 64
-            image = Image.new('RGBA', (size, size), color=(0, 0, 0, 0))  # Transparent background
-            draw = ImageDraw.Draw(image)
-            
-            # Draw your custom icon design
-            # Example: Email envelope design
-            # Outer rectangle (envelope)
-            draw.rectangle([8, 20, 56, 44], fill='#359B0C', outline='#2D7A0A', width=2)
-            
-            # Envelope flap
-            draw.polygon([(8, 20), (32, 32), (56, 20)], fill='#3D8F20', outline='#2D7A0A')
-            
-            # Add "M" for Mail
-            draw.text((24, 12), "M", fill='#359B0C', font=None)
-            
-            # Save to temp file and set as icon
-            with tempfile.NamedTemporaryFile(suffix='.ico', delete=False) as temp_file:
-                # Convert to ICO format for Windows
-                image.save(temp_file.name, format='ICO', sizes=[(16,16), (32,32), (48,48), (64,64)])
-                self.iconbitmap(temp_file.name)
-                
-                # Clean up temp file after a delay
-                self.after(1000, lambda: self._cleanup_temp_file(temp_file.name))
-                
-        except Exception as e:
-            print(f"Failed to create programmatic icon: {e}")
-    
-    def _cleanup_temp_file(self, filepath):
-        """Clean up temporary icon file"""
-        try:
-            if os.path.exists(filepath):
-                os.unlink(filepath)
-        except Exception as e:
-            print(f"Failed to cleanup temp icon file: {e}")
 
   
 def app():
