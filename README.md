@@ -1,4 +1,4 @@
-# AuraMail
+# SmartEmailBot
 
 An intelligent email automation system that monitors your Gmail inbox, classifies emails using AI, and helps you manage responses efficiently with a modern desktop GUI.
 
@@ -36,8 +36,8 @@ An intelligent email automation system that monitors your Gmail inbox, classifie
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/harrydawitch/AuraMail.git
-   cd AuraMail 
+   git clone https://github.com/harrydawitch/SmartEmailBot.git
+   cd SmartEmailBot 
    python -m venv .venv
    ```
 
@@ -61,14 +61,14 @@ An intelligent email automation system that monitors your Gmail inbox, classifie
 
 4. **Run the application**
    
-   Double click to [AuraMail.vbs](./AuraMail.vbs) to start the system
+   Double click to [SmartEmailBot.vbs](./SmartEmailBot.vbs) to start the system
 
 
 
 ## 📁 Project Structure
 
 ```
-AuraMail/
+SmartEmailBot/
 ├── 🚀 main.py                 # Application entry point
 ├── ⚙️ setup.py               # Gmail API and environment setup
 ├── 📋 requirements.txt       # Python dependencies
