@@ -26,11 +26,11 @@ class SystemTrayManager:
         image = Image.new('RGB', (64, 64), color='#359B0C')  # Use your app's green color
         draw = ImageDraw.Draw(image)
         draw.rectangle([8, 8, 56, 56], fill='white')
-        draw.text((18, 22), "AM", fill='#359B0C')  # AuraMail
+        draw.text((18, 22), "AM", fill='#359B0C')  # SmartEmailBot
         
         # Alternative: Load from file if you have an icon
         # try:
-        #     icon_path = ASSETS_PATH / "auramail_icon.png"
+        #     icon_path = ASSETS_PATH / "SmartEmailBot_icon.png"
         #     if icon_path.exists():
         #         image = Image.open(str(icon_path))
         # except Exception as e:
@@ -39,17 +39,17 @@ class SystemTrayManager:
         
         # Create menu
         menu = pystray.Menu(
-            pystray.MenuItem("Show AuraMail", self.show_window, default=True),
-            pystray.MenuItem("Hide AuraMail", self.hide_window),
+            pystray.MenuItem("Show SmartEmailBot", self.show_window, default=True),
+            pystray.MenuItem("Hide SmartEmailBot", self.hide_window),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Exit", self.quit_application)
         )
         
         # Create icon
         self.icon = pystray.Icon(
-            "AuraMail",
+            "SmartEmailBot",
             image,
-            "AuraMail - Email Agent",
+            "SmartEmailBot - Email Agent",
             menu
         )
         
@@ -94,7 +94,7 @@ class SystemTrayManager:
             # Show confirmation dialog
             result = messagebox.askyesno(
                 "Confirm Exit", 
-                "Are you sure you want to exit AuraMail?\nThis will stop email monitoring.",
+                "Are you sure you want to exit SmartEmailBot?\nThis will stop email monitoring.",
                 parent=self.gui_app
             )
             
@@ -129,7 +129,7 @@ ASSETS_PATH = OUTPUT_PATH / Path("ui/assets")
 # UI Configuration
 class UIConfig:
     WINDOW_SIZE = "1270x720"
-    TITLE = "AuraMail"
+    TITLE = "SmartEmailBot"
     APPEARANCE_MODE = "dark"
     
     # Colors
@@ -563,7 +563,7 @@ class EmailDetailView:
     
     def _set_default_content(self):
         """Set default content when no email is selected"""
-        self.subject_label.configure(text="Welcome to AuraMail!")
+        self.subject_label.configure(text="Welcome to SmartEmailBot!")
         self.sender_label.configure(text="Select an email to view its details.")
         self.body_text.configure(state="normal")
         self.body_text.delete("1.0", END)
@@ -1603,7 +1603,7 @@ class EmailAgentGUI(CTk):
         try:
             # Show notification about minimizing to tray
             result = messagebox.askyesnocancel(
-                "AuraMail", 
+                "SmartEmailBot", 
                 "What would you like to do?\n\n"
                 "• Yes: Exit completely (stop email monitoring)\n"
                 "• No: Minimize to system tray (keep running in background)\n"
