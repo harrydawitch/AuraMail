@@ -1,7 +1,7 @@
-# 🛠️ AuraMail Setup Guide
+# 🛠️ SmartEmailBot Setup Guide
 
 > **Complete step-by-step setup instructions**  
-> Get AuraMail running with Gmail API integration in minutes.
+> Get SmartEmailBot running with Gmail API integration in minutes.
 
 ---
 
@@ -10,9 +10,9 @@
 1. **Run Setup Command** → `python setup.py`
 2. **Configure Google Cloud** → Enable Gmail API & create credentials
 3. **Download Credentials** → Get `credentials.json` file
-4. **Complete OAuth** → Authorize AuraMail access
+4. **Complete OAuth** → Authorize SmartEmailBot access
 5. **Add API Keys** → OpenAI API key and email configuration
-6. **Launch Application** → Start using AuraMail!
+6. **Launch Application** → Start using SmartEmailBot!
 
 ---
 
@@ -27,7 +27,7 @@ python setup.py
 
 You'll see this welcome message:
 ```
-=== AuraMail setup ===
+=== SmartEmailBot setup ===
 
 No credentials.json found in app folder.
 I can open the Google Cloud Console page where you can create OAuth credentials for a Desktop app.
@@ -59,7 +59,7 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
    ![App Details](assets/3.png)
    
    **Required fields:**
-   - **App name**: `AuraMail` (or your preferred name)
+   - **App name**: `SmartEmailBot` (or your preferred name)
    - **User support email**: Your email address
    - **Developer contact**: Your email address
 
@@ -96,7 +96,7 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
 6. **Choose Desktop Application**
    ![Desktop App](assets/5.png)
    - Application type: **"Desktop application"**
-   - Name: `AuraMail Desktop` (or your choice)
+   - Name: `SmartEmailBot Desktop` (or your choice)
 
 7. **Download credentials**
    ![Download JSON](assets/6.png)
@@ -125,7 +125,7 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
 
 ### 4️⃣ **OAuth Authorization Flow**
 
-10. **Authorize AuraMail**
+10. **Authorize SmartEmailBot**
     
     Your browser will open with Google's authorization page:
     
@@ -137,7 +137,7 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
     
     ![App Verification](assets/12.png)
     - Click **"Advanced"** if you see a warning
-    - Click **"Go to AuraMail (unsafe)"** - this is normal for development apps
+    - Click **"Go to SmartEmailBot (unsafe)"** - this is normal for development apps
     
     ![Grant Permissions](assets/13.png)
     - **Review permissions** carefully:
@@ -184,7 +184,7 @@ After completing all steps, you should see:
 
 | Step | What It Does | Files Created |
 |------|--------------|---------------|
-| **OAuth Flow** | Authorizes AuraMail to access Gmail | `token.json` |
+| **OAuth Flow** | Authorizes SmartEmailBot to access Gmail | `token.json` |
 | **Credentials** | Stores Google API credentials | `credentials.json` |
 | **Environment** | Saves API keys and email | `.env` |
 
@@ -239,7 +239,7 @@ After completing all steps, you should see:
 
 ## 🔐 Security Notes
 
-### 🛡️ **What AuraMail Can Access**
+### 🛡️ **What SmartEmailBot Can Access**
 
 | Permission | Purpose | Data Usage |
 |------------|---------|-------------|
@@ -252,7 +252,7 @@ After completing all steps, you should see:
 
 - ✅ **Credentials stored locally** - never sent to external servers
 - ✅ **OAuth tokens encrypted** - secure authentication
-- ✅ **No data collection** - AuraMail doesn't store your emails remotely
+- ✅ **No data collection** - SmartEmailBot doesn't store your emails remotely
 - ✅ **Revoke access anytime** - through Google Account settings
 
 ---
@@ -263,7 +263,7 @@ After completing all steps, you should see:
 
 | Issue Type | Contact Method |
 |------------|----------------|
-| **🐛 Setup Problems** | [GitHub Issues](https://github.com/harrydawitch/AuraMail/issues) |
+| **🐛 Setup Problems** | [GitHub Issues](https://github.com/harrydawitch/SmartEmailBot/issues) |
 | **❓ General Questions** | tl376284@gmail.com |
 | **📖 Documentation** | [Main README](./README.md) |
 
@@ -284,10 +284,10 @@ python setup.py
 
 Once setup is complete:
 
-1. **🚀 Launch AuraMail**
+1. **🚀 Launch SmartEmailBot**
    ```bash
    # Double-click the launcher
-   ./AuraMail.vbs
+   ./SmartEmailBot.vbs
    
    # Or run directly
    python main.py
@@ -295,7 +295,7 @@ Once setup is complete:
 
 2. **🎯 Test the application**
    - Send yourself a test email
-   - Watch AuraMail classify and process it
+   - Watch SmartEmailBot classify and process it
    - Try generating a response
 
 3. **⚙️ Customize settings**
@@ -307,8 +307,8 @@ Once setup is complete:
 
 <div align="center">
 
-**🎉 Congratulations! AuraMail is ready to use.**
+**🎉 Congratulations! SmartEmailBot is ready to use.**
 
-[🏠 Back to README](./README.md) | [🐛 Report Issues](https://github.com/harrydawitch/AuraMail/issues) | [⭐ Star Project](https://github.com/harrydawitch/AuraMail)
+[🏠 Back to README](./README.md) | [🐛 Report Issues](https://github.com/harrydawitch/SmartEmailBot/issues) | [⭐ Star Project](https://github.com/harrydawitch/SmartEmailBot)
 
 </div>
