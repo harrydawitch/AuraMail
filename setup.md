@@ -77,7 +77,8 @@ If this is your first time using Google Cloud Console (Toggle `Configure OAuth C
     ![Enable GmailAPI](assets/4.2.png)
     ![Enable GmailAPI](assets/4.3.png)
 
-    **Enable it**
+
+   **Enable it**
     ![Enable GmailAPI](assets/4.4.png)
 
 
