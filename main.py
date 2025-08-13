@@ -153,7 +153,7 @@ def main():
         # Create and run the connected application
         app = EmailApp(
             workflow_model="gpt-4o-mini",
-            check_interval=30,
+            check_interval=120,
         )
         
         app.run()
