@@ -8,4 +8,4 @@ langgraph
 langgraph-checkpoint-sqlite
 ipython
 pystray
-windows-toasts
+plyer
