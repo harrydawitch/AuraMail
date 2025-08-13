@@ -21,21 +21,49 @@ class SystemTrayManager:
         self.is_hidden = False
         
     def create_tray_icon(self):
-        """Create a simple tray icon"""
-        # Create a simple icon (you can replace this with an actual icon file)
-        image = Image.new('RGB', (64, 64), color='#359B0C')  # Use your app's green color
-        draw = ImageDraw.Draw(image)
-        draw.rectangle([8, 8, 56, 56], fill='white')
-        draw.text((18, 22), "AM", fill='#359B0C')  # SmartEmailBot
-        
-        # Alternative: Load from file if you have an icon
-        # try:
-        #     icon_path = ASSETS_PATH / "SmartEmailBot_icon.png"
-        #     if icon_path.exists():
-        #         image = Image.open(str(icon_path))
-        # except Exception as e:
-        #     print(f"Could not load icon file: {e}")
-        #     # Keep using generated icon
+        """Create a tray icon using your actual icon files"""
+        try:
+            # Try to use your actual icon files
+            possible_icon_paths = [
+                ASSETS_PATH / "icon.png",
+                ASSETS_PATH / "icon.ico",
+                ASSETS_PATH / "app_icon.png",
+                ASSETS_PATH / "app_icon.ico"
+            ]
+            
+            image = None
+            for icon_path in possible_icon_paths:
+                if icon_path.exists():
+                    try:
+                        print(f"Loading tray icon from: {icon_path}")
+                        if str(icon_path).endswith('.ico'):
+                            # Convert ICO to PNG for pystray
+                            from PIL import Image as PILImage
+                            image = PILImage.open(str(icon_path))
+                        else:
+                            image = Image.open(str(icon_path))
+                        
+                        # Resize to appropriate tray icon size
+                        image = image.resize((64, 64), Image.Resampling.LANCZOS)
+                        print("✓ Tray icon loaded successfully!")
+                        break
+                        
+                    except Exception as e:
+                        print(f"Failed to load tray icon from {icon_path}: {e}")
+                        continue
+            
+            # Fallback if no icon files found
+            if image is None:
+                print("No icon files found, creating fallback tray icon")
+                image = self._create_matching_tray_icon()
+                
+        except Exception as e:
+            print(f"Failed to load tray icon: {e}")
+            # Use original fallback
+            image = Image.new('RGB', (64, 64), color='#359B0C')
+            draw = ImageDraw.Draw(image)
+            draw.rectangle([8, 8, 56, 56], fill='white')
+            draw.text((18, 22), "AM", fill='#359B0C')
         
         # Create menu
         menu = pystray.Menu(
@@ -54,6 +82,41 @@ class SystemTrayManager:
         )
         
         return self.icon
+
+    def _create_matching_tray_icon(self):
+        """Create a tray icon that matches your main app icon"""
+        size = 64
+        # Use the same purple gradient as your icon
+        image = Image.new('RGBA', (size, size), color=(138, 43, 226, 255))  # Purple background
+        draw = ImageDraw.Draw(image)
+        
+        # Create envelope design matching your icon
+        # White envelope body
+        envelope_left = 12
+        envelope_top = 24
+        envelope_right = 52
+        envelope_bottom = 40
+        
+        # Draw envelope
+        draw.rectangle([envelope_left, envelope_top, envelope_right, envelope_bottom], 
+                      fill='white', outline='#2D7A0A', width=2)
+        
+        # Envelope flap
+        draw.polygon([(envelope_left, envelope_top), 
+                     (size//2, envelope_top + 8), 
+                     (envelope_right, envelope_top)], 
+                    fill='#E0E0E0', outline='#2D7A0A')
+        
+        # Add "AI" text at bottom
+        try:
+            # Try to draw AI text
+            draw.text((size//2 - 8, envelope_bottom + 8), "AI", fill='white', anchor="mm")
+        except:
+            # Fallback if text drawing fails
+            pass
+        
+        return image
+
     
     def show_window(self, icon=None, item=None):
         """Show the main window"""
@@ -124,7 +187,7 @@ class SystemTrayManager:
 
 # Constants
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path("ui/assets")
+ASSETS_PATH = OUTPUT_PATH / Path("assets")
 
 # UI Configuration
 class UIConfig:
@@ -265,7 +328,107 @@ class EmailGrid:
         self.email_rows = []
         self.current_view_type = "normal"
         self._destroyed = False
+        self.empty_content_frame = None
         self._create_widgets()
+
+    def _create_empty_content(self):
+        """Create default content when no emails are available"""
+        if self.empty_content_frame:
+            self.empty_content_frame.destroy()
+        
+        self.empty_content_frame = CTkFrame(self.grid_frame, fg_color="transparent")
+        self.empty_content_frame.pack(fill="both", expand=True, pady=50)
+        
+        # Get appropriate message and icon based on current view
+        message_config = self._get_empty_message_config()
+        
+        # Icon/emoji
+        icon_label = CTkLabel(
+            self.empty_content_frame,
+            text=message_config["icon"],
+            font=("Helvetica", 48),
+            text_color="#666666"
+        )
+        icon_label.pack(pady=(0, 20))
+        
+        # Main message
+        main_label = CTkLabel(
+            self.empty_content_frame,
+            text=message_config["title"],
+            font=("Helvetica", 20, "bold"),
+            text_color="#888888"
+        )
+        main_label.pack(pady=(0, 10))
+        
+        # Subtitle message
+        subtitle_label = CTkLabel(
+            self.empty_content_frame,
+            text=message_config["subtitle"],
+            font=("Helvetica", 14),
+            text_color="#666666",
+            wraplength=400
+        )
+        subtitle_label.pack(pady=(0, 20))
+        
+        # Action button (optional, based on category)
+        if message_config.get("button_text"):
+            action_btn = CTkButton(
+                self.empty_content_frame,
+                text=message_config["button_text"],
+                font=("Helvetica", 12, "bold"),
+                fg_color="#359B0C",
+                hover_color="#3D8F20",
+                width=150,
+                height=35,
+                command=message_config.get("button_action", lambda: None)
+            )
+            action_btn.pack()
+
+    def _get_empty_message_config(self):
+        """Get appropriate message configuration based on current view type"""
+        if self.current_view_type == "notify":
+            return {
+                "icon": "🔔",
+                "title": "No Notifications",
+                "subtitle": "You're all caught up! No emails requiring your immediate attention.",
+            }
+        elif self.current_view_type == "pending":
+            return {
+                "icon": "⏳",
+                "title": "No Pending Approvals",
+                "subtitle": "No draft emails are waiting for your review and approval.",
+            }
+        elif self.current_view_type == "ignore":
+            return {
+                "icon": "🗃️",
+                "title": "No Ignored Emails",
+                "subtitle": "No emails have been moved to the ignore list.",
+            }
+        else:  # home or normal view
+            return {
+                "icon": "📧",
+                "title": "No Emails",
+                "subtitle": "Your inbox is empty. New emails will appear here when they arrive.",
+                "button_text": "Send Email",
+                "button_action": self._handle_send_email_click
+            }
+
+    def _handle_send_email_click(self):
+        """Handle send email button click from empty state"""
+        # Get the root GUI application
+        widget = self.parent
+        while widget:
+            if hasattr(widget, 'show_send_email'):
+                widget.show_send_email()
+                break
+            widget = widget.master
+    
+    def _hide_empty_content(self):
+        """Hide the empty content display"""
+        if self.empty_content_frame:
+            self.empty_content_frame.destroy()
+            self.empty_content_frame = None
+
     
     def _create_widgets(self):
         """Create the grid frame with a wrapper box"""
@@ -289,12 +452,18 @@ class EmailGrid:
             self._clear_grid()
             self.email_rows = []
             self.current_view_type = view_type
-            
-            # Add small delay to ensure proper cleanup
-            if hasattr(self.parent, 'after'):
-                self.parent.after(10, lambda: self._create_rows_delayed(emails, view_type))
+
+            # Hide empty content first
+            self._hide_empty_content()
+
+            if not emails:  # If no emails, show empty content
+                self._create_empty_content()
             else:
-                self._create_rows_delayed(emails, view_type)
+                # Add small delay to ensure proper cleanup
+                if hasattr(self.parent, 'after'):
+                    self.parent.after(10, lambda: self._create_rows_delayed(emails, view_type))
+                else:
+                    self._create_rows_delayed(emails, view_type)
                 
         except Exception as e:
             print(f"Error in update_emails: {e}")
@@ -310,13 +479,16 @@ class EmailGrid:
             except Exception as e:
                 print(f"Error creating email row {idx}: {e}")
                 continue
-     
+
     def _clear_grid(self):
         """Safely clear all widgets from the grid"""
         if getattr(self, '_destroyed', False) or not self.grid_frame:
             return
             
         try:
+            # Hide empty content if it exists
+            self._hide_empty_content()
+            
             # Get all children before starting destruction
             children = list(self.grid_frame.winfo_children())
             
@@ -332,7 +504,8 @@ class EmailGrid:
             self.email_rows.clear()
             
         except Exception as e:
-            print(f"Error clearing grid: {e}")
+            print(f"Error clearing grid: {e}")            
+
     
     def show(self):
         """Show the grid"""
@@ -1161,6 +1334,7 @@ class EmailRow:
     
     def _create_widgets(self):
         """Create the row widgets"""
+        from src.utils import get_sender_name
         # Main row frame
         self.row_frame = CTkFrame(self.parent, fg_color=UIConfig.ROW_COLOR)
         self.row_frame.grid(row=self.index, column=0, columnspan=3, sticky="ewns", padx=0, pady=1)
@@ -1175,7 +1349,7 @@ class EmailRow:
             self.row_frame.grid_columnconfigure(1, weight=0, minsize=110)
         
         # Left label (sender | snippet)
-        left_text = f"{self.email.sender} | {self.email.subject}"
+        left_text = f"{get_sender_name(self.email.sender)} | {self.email.subject}"
         self.left_label = CTkLabel(
             self.row_frame, 
             text=left_text, 
@@ -1390,6 +1564,13 @@ class EmailAgentGUI(CTk):
     
     def __init__(self, communicator: Communicator):
         super().__init__()
+        self.wm_attributes('-toolwindow', False)
+        
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SmartEmailBot.1.0")
+        except:
+            pass
 
         self.frontend_communicator = FrontendCommunicator(
            events= communicator.events, 
@@ -1405,6 +1586,7 @@ class EmailAgentGUI(CTk):
 
 
         self._setup_window()
+        self._setup_app_icon()
         self._create_components()
         self._initialize_app()
 
@@ -1641,6 +1823,97 @@ class EmailAgentGUI(CTk):
         """Shutdown method that can be called externally"""
         if self.tray_manager:
             self.tray_manager.stop_tray_icon()    
+            
+
+
+    def _setup_app_icon(self):
+        """Simple application icon setup"""
+        try:
+            # Try ICO file first (best for Windows taskbar)
+            ico_path = ASSETS_PATH / "icon.ico"
+            
+            if ico_path.exists():
+                self.iconbitmap(str(ico_path))
+                print("✅ Icon loaded successfully!")
+            else:
+                print(f"❌ Icon file not found at: {ico_path}")
+                
+        except Exception as e:
+            print(f"❌ Icon setup failed: {e}")
+            
+        # Force window update
+        self.update()
+
+    def _set_png_icon_enhanced(self, icon_path):
+        """Enhanced PNG icon setup for better taskbar display"""
+        try:
+            from PIL import Image, ImageTk
+            
+            # Load the PNG image
+            pil_image = Image.open(icon_path)
+            
+            # Create multiple sizes for Windows taskbar
+            sizes = [16, 24, 32, 48, 64, 128]
+            photos = []
+            
+            for size in sizes:
+                resized = pil_image.resize((size, size), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(resized)
+                photos.append(photo)
+            
+            # Set all sizes - Windows will pick the appropriate one
+            self.iconphoto(True, *photos)
+            
+            # Keep references to prevent garbage collection
+            self._icon_photos = photos
+            
+        except Exception as e:
+            print(f"Failed to set enhanced PNG icon: {e}")
+            raise
+
+    
+    def _create_programmatic_icon(self):
+        """Create an icon programmatically using PIL"""
+        try:
+            from PIL import Image, ImageDraw
+            import tempfile
+            
+            # Create icon image
+            size = 64
+            image = Image.new('RGBA', (size, size), color=(0, 0, 0, 0))  # Transparent background
+            draw = ImageDraw.Draw(image)
+            
+            # Draw your custom icon design
+            # Example: Email envelope design
+            # Outer rectangle (envelope)
+            draw.rectangle([8, 20, 56, 44], fill='#359B0C', outline='#2D7A0A', width=2)
+            
+            # Envelope flap
+            draw.polygon([(8, 20), (32, 32), (56, 20)], fill='#3D8F20', outline='#2D7A0A')
+            
+            # Add "M" for Mail
+            draw.text((24, 12), "M", fill='#359B0C', font=None)
+            
+            # Save to temp file and set as icon
+            with tempfile.NamedTemporaryFile(suffix='.ico', delete=False) as temp_file:
+                # Convert to ICO format for Windows
+                image.save(temp_file.name, format='ICO', sizes=[(16,16), (32,32), (48,48), (64,64)])
+                self.iconbitmap(temp_file.name)
+                
+                # Clean up temp file after a delay
+                self.after(1000, lambda: self._cleanup_temp_file(temp_file.name))
+                
+        except Exception as e:
+            print(f"Failed to create programmatic icon: {e}")
+    
+    def _cleanup_temp_file(self, filepath):
+        """Clean up temporary icon file"""
+        try:
+            if os.path.exists(filepath):
+                os.unlink(filepath)
+        except Exception as e:
+            print(f"Failed to cleanup temp icon file: {e}")
+
   
 def app():
     """Main entry point"""

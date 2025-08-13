@@ -71,6 +71,16 @@ class EmailApp:
         """Start the GUI frontend"""
         
         print("Starting GUI frontend...")
+        from src.email_service import EmailService
+        from src.utils import Notification
+        
+        notification = Notification()
+        
+        notify_emails = EmailService.load_emails_by_category("notify")
+        pending_emails = EmailService.load_emails_by_category("human")
+                
+        if notify_emails or pending_emails:
+            notification.startup(len(notify_emails), (pending_emails))
         
         self.gui = EmailAgentGUI(
             communicator= self.communicator
@@ -143,7 +153,7 @@ def main():
         # Create and run the connected application
         app = EmailApp(
             workflow_model="gpt-4o-mini",
-            check_interval=180,
+            check_interval=30,
         )
         
         app.run()

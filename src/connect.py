@@ -321,14 +321,22 @@ class FrontendCommunicator(Communicator):
     def _handle_notify_decision(self, data):
         """Handle email classified as notify"""
         if self.gui:
+            from src.utils import Notification
             from src.email_service import EmailService
+            
+            notification = Notification()
+
             summary = data.get("summary") 
             email_id = data.get("id")
-                        
+
             print(f"\nEmail `{email_id}` classified as notify with summary - (_handle_notify_decision)")
+            
             email = EmailService.get_email("home", email_id)
             email.summary = summary
             email.category = "notify"
+            sender = email.sender
+            
+            notification.new_notify_email(sender, summary)
             
             EmailService.add_to_notify(email)
             

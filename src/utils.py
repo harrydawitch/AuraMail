@@ -1,30 +1,53 @@
 import os
+import re
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 
-from windows_toasts import WindowsToaster, Toast, ToastAudio, AudioSource
+from typing import List, Optional
+from plyer import notification
 
-toaster = WindowsToaster("AuraMail")
-toast = Toast()
-toast.text_fields = ["New email"]
-
-# Use a more noticeable sound
-toast.audio = ToastAudio(AudioSource.SMS, looping=False)
-
-toaster.show_toast(toast)
-
+from dotenv import load_dotenv
+load_dotenv()
 
 class Notification:
-    def __init__(self, state):
-        self.state = state
-        self.toaster = ...
-                
-    def play_sound(self):
-        pass
+    def __init__(self, app_name: str = "SmartEmailBot", app_icon: str = "assets/icon.ico", timeout: int = 10):
+        self.app_name = app_name
+        self.app_icon = app_icon
+        self.timeout = timeout
+        self.display_name = os.environ.get("EMAIL_DISPLAY_NAME")
+        print(f"USERNAME: {self.display_name}")
     
+    def startup(self, notify_count: int, pending_count: int):
+        """Send startup notification"""
+        if notify_count == 0 and pending_count == 0:
+            return  # Don't notify if no emails
+            
+        title = f"Welcome back {self.display_name}"
+        message = f"You have {notify_count if notify_count else 0} notify email(s) and {pending_count if pending_count else 0} pending email(s)"
+        self._send_notification(title, message)  
+    
+    def new_notify_email(self, sender: str, content: str):
+        """Send new email notification"""
+        title = "New notify email!" + " - " + get_sender_name(sender)
+        self._send_notification(title, content)
 
+    
+    def _send_notification(self, title: str, message: str, timeout: Optional[int] = None):
+        """Internal method to send notifications with error handling"""
+        try:
+            notification.notify(
+                title=title,
+                message=message,
+                app_name=self.app_name,
+                app_icon=self.app_icon,
+                timeout=timeout or self.timeout,
+                toast=False,
+            )
+        except Exception as e:
+            print(f"Failed to send notification: {e}")
+             
 def _convert_to_html(text_body):
     """
     Convert plain text to HTML with proper formatting
@@ -152,3 +175,9 @@ To: {to}\n\n
 
 ---
             """
+            
+def get_sender_name(sender):
+    pattern = r'^"?(.*?)"?\s*<'
+    name = re.match(pattern, sender).group(1).strip('.')
+        
+    return name
