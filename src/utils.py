@@ -17,7 +17,6 @@ class Notification:
         self.app_icon = app_icon
         self.timeout = timeout
         self.display_name = os.environ.get("EMAIL_DISPLAY_NAME")
-        print(f"USERNAME: {self.display_name}")
     
     def startup(self, notify_count: int, pending_count: int):
         """Send startup notification"""

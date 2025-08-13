@@ -35,7 +35,6 @@ class SystemTrayManager:
             for icon_path in possible_icon_paths:
                 if icon_path.exists():
                     try:
-                        print(f"Loading tray icon from: {icon_path}")
                         if str(icon_path).endswith('.ico'):
                             # Convert ICO to PNG for pystray
                             from PIL import Image as PILImage
@@ -45,7 +44,6 @@ class SystemTrayManager:
                         
                         # Resize to appropriate tray icon size
                         image = image.resize((64, 64), Image.Resampling.LANCZOS)
-                        print("✓ Tray icon loaded successfully!")
                         break
                         
                     except Exception as e:
@@ -1775,7 +1773,6 @@ class EmailAgentGUI(CTk):
         try:
             self.tray_manager = SystemTrayManager(self)
             self.tray_manager.start_tray_icon()
-            print("System tray icon started")
         except Exception as e:
             print(f"Failed to setup system tray: {e}")
             # Continue without tray if it fails
@@ -1834,7 +1831,6 @@ class EmailAgentGUI(CTk):
             
             if ico_path.exists():
                 self.iconbitmap(str(ico_path))
-                print("✅ Icon loaded successfully!")
             else:
                 print(f"❌ Icon file not found at: {ico_path}")
                 

@@ -3,7 +3,7 @@ import threading
 from datetime import datetime
 from typing import Dict
 from dataclasses import dataclass
-from langchain_google_community import GmailToolkit
+from helper import check_gmail_api, check_openai_api
 
 from src.backend import EmailManager
 from src.ui.gui import EmailAgentGUI
@@ -50,21 +50,70 @@ class EmailApp:
 
 
     def start_backend(self):
-        """Start the email monitoring backend"""
+        """Start the email monitoring backend (with enhanced health checks)"""
         print("Starting backend...")
-        
+
         from src.email_service import EmailService
         EmailService.load_from_file()
+
+        # Initialize Gmail toolkit first
+        print("Initializing GmailToolkit and checking Gmail API...")
         
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                from langchain_google_community import GmailToolkit
+                gmail_tool = GmailToolkit()
+
+                gmail_ok, gmail_msg = check_gmail_api(gmail_tool)
+                print(f"Attempt {attempt + 1}: {gmail_msg}")
+                
+                if gmail_ok:
+                    break
+                    
+                if attempt < max_retries - 1:
+                    print(f"Retrying Gmail connection in 1 seconds...")
+                    time.sleep(1)
+                else:
+                    print("All Gmail connection attempts failed")
+                    
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    print(f"Retrying in 1 seconds...")
+                    time.sleep(1)
+
+        print("Checking OpenAI access...")
+        openai_ok, openai_msg = check_openai_api()
+        print(openai_msg)
+
+        # Decide whether to continue
+        if not gmail_ok:
+            print("\n❌ Gmail API health check FAILED after all retries.")
+            print("Possible solutions:")
+            print("1. Run setup.py to re-authenticate")
+            print("2. Check your internet connection")
+            print("3. Verify credentials.json and token.json exist")
+            print("4. Check if Gmail API is enabled in Google Cloud Console")
+            raise RuntimeError("Gmail API health check failed — aborting startup.")
+            
+        if not openai_ok:
+            print("\n❌ OpenAI API health check FAILED.")
+            print("Please ensure OPENAI_API_KEY is set in your .env file.")
+            raise RuntimeError("OpenAI API health check failed — aborting startup.")
+
+        print("✅ All health checks passed!")
+
+
         self.backend = EmailManager(
-            model= self.workflow_model,
-            communicator= self.communicator,
-            gmail_api= GmailToolkit(),
-            check_interval= self.check_interval,
-            db_path= self.db_path
+            model=self.workflow_model,
+            communicator=self.communicator,
+            gmail_api=gmail_tool,
+            check_interval=self.check_interval,
+            db_path=self.db_path
         )
-        
-        # Start poll emails in separate thread and run backend
+
+        # Start backend monitoring loop
         self.backend.run()
 
     def start_frontend(self):
@@ -95,7 +144,7 @@ class EmailApp:
             self.backend_thread = threading.Thread(target=self.start_backend, daemon=True)
             self.backend_thread.start()
             print("===BACKEND STARTED===")
-            time.sleep(1)
+            time.sleep(6)
             
             # Start frontend
             self.start_frontend()

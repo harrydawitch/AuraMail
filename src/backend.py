@@ -489,16 +489,29 @@ class EmailManager:
         ).start()
     
     def run(self) -> None: 
-        """Main monitoring loop"""
+        """Main monitoring loop with token refresh"""
         print("\nStarting email monitoring...")
+        
+        last_token_check = 0
+        TOKEN_CHECK_INTERVAL = 3600  # 1 hour in seconds
         
         try:
             while True:
                 try:
+                    current_time = time.time()
+                    
+                    # Check token every hour
+                    if current_time - last_token_check > TOKEN_CHECK_INTERVAL:
+                        print("\n=== Checking Gmail token status ===")
+                        if self._check_and_refresh_gmail_token():
+                            last_token_check = current_time
+                        else:
+                            print("⚠️ Gmail token check failed - continuing with existing connection")
+                    
                     # Search for today's emails
                     search_results = self.searcher.fetch_email(self.state)
                     print(f"Number of emails in search results: {len(search_results)}")
-                                      
+                                    
                     if self.state.is_first_run:
                         self.state.handle_first_run(search_results)
                     
@@ -513,6 +526,15 @@ class EmailManager:
                     break
                 except Exception as e:
                     print(f"Error in monitoring loop: {e}")
+                    
+                    # If it's a Gmail API error, try token refresh
+                    if "gmail" in str(e).lower() or "auth" in str(e).lower():
+                        print("Detected potential Gmail auth error - attempting token refresh...")
+                        if self._check_and_refresh_gmail_token():
+                            print("✓ Token refreshed, retrying in next cycle")
+                        else:
+                            print("❌ Token refresh failed")
+                    
                     time.sleep(self.check_interval)
                     
         finally:
@@ -523,3 +545,30 @@ class EmailManager:
         """Clean shutdown with state saving"""
         print("Recording shutdown time...")
         self.state.record_shutdown()
+        
+
+    def _check_and_refresh_gmail_token(self):
+        """Periodically check and refresh Gmail token to prevent API failures"""
+        try:
+            from helper import refresh_gmail_token
+            
+            refresh_success, message = refresh_gmail_token()
+            if refresh_success:
+                print(f"Token check: {message}")
+                return True
+            else:
+                print(f"Token refresh needed: {message}")
+                # If refresh fails, try to reinitialize the searcher
+                try:
+                    from langchain_google_community import GmailToolkit
+                    new_gmail_tool = GmailToolkit()
+                    self.searcher = EmailSearcher(new_gmail_tool)
+                    print("✓ Gmail searcher reinitialized with fresh token")
+                    return True
+                except Exception as e:
+                    print(f"Failed to reinitialize Gmail searcher: {e}")
+                    return False
+                    
+        except Exception as e:
+            print(f"Error checking Gmail token: {e}")
+            return False
