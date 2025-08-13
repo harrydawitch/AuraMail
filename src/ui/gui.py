@@ -1562,7 +1562,6 @@ class EmailAgentGUI(CTk):
     
     def __init__(self, communicator: Communicator):
         super().__init__()
-        print("START SET WM ATTRIBUTES")
         self.wm_attributes('-toolwindow', False)
         
     
@@ -1830,7 +1829,6 @@ class EmailAgentGUI(CTk):
         try:
             ico_path = ASSETS_PATH / "icon.ico"
             
-            print(f"ICO_PATH: {ico_path}")
             
             if ico_path.exists():
                 self.iconbitmap(str(ico_path))

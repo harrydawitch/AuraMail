@@ -34,7 +34,6 @@ class Notification:
             for icon_path in possible_icons:
                 if icon_path.exists():
                     self.app_icon = str(icon_path.absolute())
-                    print(f"Using icon: {self.app_icon}")
                     break
             
             if self.app_icon is None:
@@ -63,7 +62,7 @@ class Notification:
     def new_notify_email(self, sender: str, content: str):
         """Send new email notification"""
         title = "New notify email!" + " - " + get_sender_name(sender)
-        self._send_notification(title, content)
+        self._send_notification(title, content[:255])
 
     
     def _send_notification(self, title: str, message: str, timeout: Optional[int] = None):

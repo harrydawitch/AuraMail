@@ -1,4 +1,5 @@
 
+import os
 from src.states import SendEmailState, EmailResponseState, ClassifierOutputSchema, SummarizerOutputSchema, WriterOutputSchema
 
 from src.prompts import classifier_system_prompt, default_rules, classifier_user_prompt
@@ -16,7 +17,8 @@ from langchain_google_community import GmailToolkit
 from langchain_google_community.gmail.send_message import GmailSendMessage
 
 from typing import Union
-
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class Nodes():
@@ -130,8 +132,9 @@ class Nodes():
 
 
     def writer(self, state: Union[EmailResponseState, SendEmailState]):
+        user_name = os.environ.get("EMAIL_DISPLAY_NAME")
         llm = self.model.with_structured_output(WriterOutputSchema)
-        messages = [SystemMessage(content= writer_system_prompt.format(writer_instruction=default_writer_instruction))]\
+        messages = [SystemMessage(content= writer_system_prompt.format(writer_instruction=default_writer_instruction,  user_name= user_name))]\
                                                                 +                                                      \
                                                         state["messages"]
         

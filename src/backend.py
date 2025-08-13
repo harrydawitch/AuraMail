@@ -551,7 +551,6 @@ class EmailManager:
         """Periodically check and refresh Gmail token to prevent API failures"""
         try:
             from helper import refresh_gmail_token
-            
             refresh_success, message = refresh_gmail_token()
             if refresh_success:
                 print(f"Token check: {message}")

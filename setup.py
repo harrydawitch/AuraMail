@@ -10,7 +10,7 @@ from pathlib import Path
 
 try:
     import tkinter as tk
-    from tkinter import filedialog, messagebox
+    from tkinter import filedialog
     TK_AVAILABLE = True
 except Exception:
     TK_AVAILABLE = False
@@ -25,7 +25,7 @@ except Exception:
     Credentials = None
     Request = None
 
-APP_NAME = "SmartEmailBot"  # <--- change this to your app's short name if you want
+APP_NAME = "SmartEmailBot"
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
@@ -149,7 +149,7 @@ objShell.Run "{python_cmd}", 0, True'''
     with open(VBS_LAUNCHER_PATH, 'w', encoding='utf-8') as f:
         f.write(vbs_content)
     
-    print(f"✓ Generated Windows launcher: {VBS_LAUNCHER_PATH}")
+    print(f"✅ Generated Windows launcher: {VBS_LAUNCHER_PATH}")
     
     # Also generate a batch file alternative (more reliable for complex paths)
     bat_path = APP_DIR / "SmartEmailBot.bat"
@@ -170,7 +170,7 @@ pause'''
     with open(bat_path, 'w', encoding='utf-8') as f:
         f.write(bat_content)
     
-    print(f"✓ Generated Windows batch file: {bat_path}")
+    print(f"✅ Generated Windows batch file: {bat_path}")
     print("  💡 Tip: Use the .bat file if .vbs has issues with complex paths")
 
 
@@ -195,11 +195,8 @@ cd "{working_dir}"
     # Make script executable
     os.chmod(launcher_path, 0o755)
     
-    print(f"✓ Generated Unix launcher: {launcher_path}")
+    print(f"✅ Generated Unix launcher: {launcher_path}")
     print(f"  To run: ./SmartEmailBot.sh or bash SmartEmailBot.sh")
-
-
-
 
 
 def update_env_file(openai_key: str, my_email: str, username: str):
@@ -216,13 +213,13 @@ def update_env_file(openai_key: str, my_email: str, username: str):
 
     env_data["OPENAI_API_KEY"] = openai_key
     env_data["MY_EMAIL"] = my_email
-    env_data["EMAIL_DISPLAY_NAME"]= username
+    env_data["EMAIL_DISPLAY_NAME"] = username
 
     with open(ENV_PATH, "w") as f:
         for k, v in env_data.items():
             f.write(f"{k}={v}\n")
 
-    print(f"✓ .env file updated at {ENV_PATH}")
+    print(f"✅ .env file updated at {ENV_PATH}")
 
 
 def ask_user_for_credentials_file():
@@ -253,7 +250,7 @@ def copy_credentials_file(src: Path):
     ensure_app_dir()
     dest = CREDENTIALS_PATH
     shutil.copy2(str(src), str(dest))
-    print(f"✓ Copied credentials.json to {dest}")
+    print(f"✅ Copied credentials.json to {dest}")
     return dest
 
 
@@ -261,7 +258,7 @@ def save_token(creds):
     ensure_app_dir()
     with open(TOKEN_PATH, 'w') as f:
         f.write(creds.to_json())
-    print(f"✓ Saved token to {TOKEN_PATH}")
+    print(f"✅ Saved token to {TOKEN_PATH}")
 
 
 def run_oauth_flow():
@@ -273,10 +270,46 @@ def run_oauth_flow():
         raise FileNotFoundError("credentials.json not found in app folder. Run setup to add it.")
 
     flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_PATH), SCOPES)
-    print("Starting local server for OAuth consent — your browser will open.")
-    creds = flow.run_local_server(port=0)
+    print("Starting local server for OAuth consent – your browser will open.")
+    creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
     save_token(creds)
     return creds
+
+
+def ensure_env():
+    """
+    Check if .env file exists and has required variables.
+    Returns True if .env is properly configured, False otherwise.
+    """
+    if not ENV_PATH.exists():
+        print(f"❌ .env file not found at {ENV_PATH}")
+        return False
+    
+    required_vars = ["OPENAI_API_KEY", "MY_EMAIL", "EMAIL_DISPLAY_NAME"]
+    env_data = {}
+    
+    try:
+        with open(ENV_PATH, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    env_data[key] = value.strip()
+    except Exception as e:
+        print(f"❌ Error reading .env file: {e}")
+        return False
+    
+    missing_vars = []
+    for var in required_vars:
+        if var not in env_data or not env_data[var]:
+            missing_vars.append(var)
+    
+    if missing_vars:
+        print(f"❌ Missing or empty variables in .env: {', '.join(missing_vars)}")
+        return False
+    
+    print("✅ .env file is properly configured")
+    return True
 
 
 def ensure_token():
@@ -291,7 +324,7 @@ def ensure_token():
         creds = None
 
     if creds and creds.valid:
-        print("✓ Existing token is valid.")
+        print("✅ Existing token is valid.")
         return creds
 
     if creds and creds.expired and creds.refresh_token:
@@ -307,13 +340,46 @@ def ensure_token():
     return run_oauth_flow()
 
 
+def check_setup_status():
+    """
+    Check if the application is properly set up.
+    Returns tuple: (is_setup_complete, missing_components)
+    """
+    missing_components = []
+    
+    # Check credentials.json
+    if not CREDENTIALS_PATH.exists():
+        missing_components.append("credentials.json")
+    
+    # Check token.json
+    if not TOKEN_PATH.exists():
+        missing_components.append("token.json")
+    else:
+        # Check if token is valid
+        try:
+            if Credentials is not None:
+                creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+                if not creds or not creds.valid:
+                    if not (creds and creds.expired and creds.refresh_token):
+                        missing_components.append("valid token")
+        except Exception:
+            missing_components.append("valid token")
+    
+    # Check .env file
+    if not ensure_env():
+        missing_components.append(".env configuration")
+    
+    is_complete = len(missing_components) == 0
+    return is_complete, missing_components
+
+
 def write_readme_and_example():
     if README_PATH.exists():
-        print("✓ README.md already exists in repo root — not overwriting.")
+        print("✅ README.md already exists in repo root – not overwriting.")
     else:
         print("Writing a quick README.md to repo root...")
         README_CONTENT = f"""
-# {APP_NAME} — Quick start
+# {APP_NAME} – Quick start
 
 This repository contains a local desktop Python app that accesses the user's Gmail account.
 
@@ -334,8 +400,8 @@ This repository contains a local desktop Python app that accesses the user's Gma
 
 ## Scopes used
 
-- `https://www.googleapis.com/auth/gmail.readonly` — read email metadata & bodies
-- `https://www.googleapis.com/auth/gmail.send` — send email on behalf of the signed-in user
+- `https://www.googleapis.com/auth/gmail.readonly` – read email metadata & bodies
+- `https://www.googleapis.com/auth/gmail.send` – send email on behalf of the signed-in user
 
 ## Packaging & distribution notes
 
@@ -344,7 +410,7 @@ This repository contains a local desktop Python app that accesses the user's Gma
 
 """
         README_PATH.write_text(README_CONTENT, encoding='utf-8')
-        print(f"✓ Wrote {README_PATH}")
+        print(f"✅ Wrote {README_PATH}")
 
     if not CREDENTIALS_EXAMPLE_PATH.exists():
         print("Writing credentials.example.json (safe to commit) ...")
@@ -360,9 +426,9 @@ This repository contains a local desktop Python app that accesses the user's Gma
             }
         }
         CREDENTIALS_EXAMPLE_PATH.write_text(json.dumps(example, indent=2))
-        print(f"✓ Wrote {CREDENTIALS_EXAMPLE_PATH}")
+        print(f"✅ Wrote {CREDENTIALS_EXAMPLE_PATH}")
     else:
-        print("✓ credentials.example.json already exists — not overwriting.")
+        print("✅ credentials.example.json already exists – not overwriting.")
 
 
 def setup_interactive():
@@ -370,7 +436,7 @@ def setup_interactive():
     ensure_app_dir()
 
     if CREDENTIALS_PATH.exists():
-        print(f"✓ Found credentials.json at {CREDENTIALS_PATH}")
+        print(f"✅ Found credentials.json at {CREDENTIALS_PATH}")
     else:
         print("No credentials.json found in app folder.")
         print("I can open the Google Cloud Console page where you can create OAuth credentials for a Desktop app.")
@@ -396,17 +462,19 @@ def setup_interactive():
     try:
         creds = ensure_token()
         if creds:
-            print("✓ OAuth setup completed successfully!")
-            print(f"✓ credentials.json and token.json are stored in: {APP_DIR}")
+            print("✅ OAuth setup completed successfully!")
+            print(f"✅ credentials.json and token.json are stored in: {APP_DIR}")
         else:
             print("! OAuth setup did not complete. See messages above.")
             return
-            
-        print("\n=== Configure OpenAI API key and your email ===")
-        openai_key = input("Enter your OpenAI API key: ").strip()
-        my_email = input("Enter your email: ").strip()
-        username = input("Enter your username: ").strip()
-        update_env_file(openai_key, my_email, username)
+        
+        # Check and setup .env file
+        if not ensure_env():
+            print("\n=== Configure OpenAI API key and your email ===")
+            openai_key = input("Enter your OpenAI API key: ").strip()
+            my_email = input("Enter your email: ").strip()
+            username = input("Enter your username: ").strip()
+            update_env_file(openai_key, my_email, username)
             
     except Exception as e:
         print("Error during OAuth flow:", e)
@@ -424,7 +492,7 @@ def setup_interactive():
     write_readme_and_example()
     
     print("\n" + "="*50)
-    print("✓ Setup completed successfully!")
+    print("✅ Setup completed successfully!")
     print("="*50)
     
     if platform.system() == "Windows":
