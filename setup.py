@@ -5,8 +5,16 @@ import json
 import shutil
 import webbrowser
 import platform
-from pathlib import Path
 
+# Import our unified path utilities
+from path_utils import (
+    get_app_dir, 
+    get_credentials_path, 
+    get_token_path, 
+    get_env_path,
+    debug_paths,
+    load_environment
+)
 
 try:
     import tkinter as tk
@@ -31,36 +39,22 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
 ]
 
-def get_app_dir():
-    """
-    Return the root folder of the project (where this script resides or,
-    if frozen by PyInstaller, where the executable resides).
-    """
-    if getattr(sys, 'frozen', False):  # running as PyInstaller exe
-        base_path = Path(sys.executable).parent
-    else:
-        base_path = Path(__file__).resolve().parent
-
-    # If setup_oauth.py is in a subfolder (e.g., src/setup), go up to project root
-    return base_path.parent if (base_path / 'setup_oauth.py').exists() else base_path
-
-
+# Use unified path system
 APP_DIR = get_app_dir()
-CREDENTIALS_PATH = APP_DIR / 'credentials.json'
-TOKEN_PATH = APP_DIR / 'token.json'
-CREDENTIALS_EXAMPLE_PATH = Path('credentials.example.json')
-README_PATH = Path('README.md')
-ENV_PATH = get_app_dir() / ".env"
-VBS_LAUNCHER_PATH = APP_DIR / "SmartEmailBot.vbs"
+CREDENTIALS_PATH = get_credentials_path()
+TOKEN_PATH = get_token_path()
+ENV_PATH = get_env_path()
 
+# Other paths
+CREDENTIALS_EXAMPLE_PATH = APP_DIR / 'credentials.example.json'
+README_PATH = APP_DIR / 'README.md'
+VBS_LAUNCHER_PATH = APP_DIR / "SmartEmailBot.vbs"
 
 GCP_CREDENTIALS_URL = 'https://console.cloud.google.com/apis/credentials'
 GCP_ENABLE_API_URL = 'https://console.cloud.google.com/apis/library/gmail.googleapis.com'
 
-
 def ensure_app_dir():
     APP_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def open_in_browser(url):
     print(f"Opening: {url}")
@@ -68,7 +62,6 @@ def open_in_browser(url):
         webbrowser.open(url)
     except Exception as e:
         print("Failed to open browser automatically.", e)
-
 
 def detect_python_environment():
     """
@@ -116,7 +109,6 @@ def detect_python_environment():
         str(current_dir)
     )
 
-
 def generate_launcher_file():
     """
     Generate platform-specific launcher file for SmartEmailBot.
@@ -127,7 +119,6 @@ def generate_launcher_file():
         generate_windows_launcher(python_cmd, activation_cmd, working_dir)
     else:
         generate_unix_launcher(python_cmd, activation_cmd, working_dir)
-
 
 def generate_windows_launcher(python_cmd, activation_cmd, working_dir):
     """Generate Windows VBS launcher file."""
@@ -173,7 +164,6 @@ pause'''
     print(f"✅ Generated Windows batch file: {bat_path}")
     print("  💡 Tip: Use the .bat file if .vbs has issues with complex paths")
 
-
 def generate_unix_launcher(python_cmd, activation_cmd, working_dir):
     """Generate Unix/Linux/macOS shell script launcher."""
     
@@ -198,7 +188,6 @@ cd "{working_dir}"
     print(f"✅ Generated Unix launcher: {launcher_path}")
     print(f"  To run: ./SmartEmailBot.sh or bash SmartEmailBot.sh")
 
-
 def update_env_file(openai_key: str, my_email: str, username: str):
     """
     Create or update the .env file with the provided OpenAI key and email.
@@ -221,7 +210,6 @@ def update_env_file(openai_key: str, my_email: str, username: str):
 
     print(f"✅ .env file updated at {ENV_PATH}")
 
-
 def ask_user_for_credentials_file():
     """Try a file dialog first, fall back to text input."""
     if TK_AVAILABLE:
@@ -243,7 +231,6 @@ def ask_user_for_credentials_file():
         return None
     return Path(p)
 
-
 def copy_credentials_file(src: Path):
     if not src.exists():
         raise FileNotFoundError(str(src))
@@ -253,13 +240,11 @@ def copy_credentials_file(src: Path):
     print(f"✅ Copied credentials.json to {dest}")
     return dest
 
-
 def save_token(creds):
     ensure_app_dir()
     with open(TOKEN_PATH, 'w') as f:
         f.write(creds.to_json())
     print(f"✅ Saved token to {TOKEN_PATH}")
-
 
 def run_oauth_flow():
     if InstalledAppFlow is None:
@@ -267,14 +252,13 @@ def run_oauth_flow():
         return None
 
     if not CREDENTIALS_PATH.exists():
-        raise FileNotFoundError("credentials.json not found in app folder. Run setup to add it.")
+        raise FileNotFoundError(f"credentials.json not found at {CREDENTIALS_PATH}. Run setup to add it.")
 
     flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_PATH), SCOPES)
     print("Starting local server for OAuth consent – your browser will open.")
     creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
     save_token(creds)
     return creds
-
 
 def ensure_env():
     """
@@ -311,7 +295,6 @@ def ensure_env():
     print("✅ .env file is properly configured")
     return True
 
-
 def ensure_token():
     """Return Credentials object, refreshing or running flow when needed."""
     if Credentials is None:
@@ -338,7 +321,6 @@ def ensure_token():
 
     # else we need to run interactive flow
     return run_oauth_flow()
-
 
 def check_setup_status():
     """
@@ -372,12 +354,11 @@ def check_setup_status():
     is_complete = len(missing_components) == 0
     return is_complete, missing_components
 
-
 def write_readme_and_example():
     if README_PATH.exists():
-        print("✅ README.md already exists in repo root – not overwriting.")
+        print("✅ README.md already exists – not overwriting.")
     else:
-        print("Writing a quick README.md to repo root...")
+        print("Writing a quick README.md...")
         README_CONTENT = f"""
 # {APP_NAME} – Quick start
 
@@ -391,12 +372,12 @@ This repository contains a local desktop Python app that accesses the user's Gma
    - Enable the Gmail API: {GCP_ENABLE_API_URL}
    - Create OAuth credentials: {GCP_CREDENTIALS_URL}
 2. Download the `credentials.json` and run `python setup.py`.
-3. The script will copy `credentials.json` into a local app folder and run the OAuth consent flow. After consent a `token.json` is saved for future runs.
+3. The script will copy `credentials.json` into the app folder and run the OAuth consent flow. After consent a `token.json` is saved for future runs.
 
-## Where files are stored (defaults)
+## Where files are stored
 
-- Windows: `%APPDATA%\\{APP_NAME}\\credentials.json` and `%APPDATA%\\{APP_NAME}\\token.json`
-- macOS / Linux: `~/.{APP_NAME.lower()}/credentials.json` and `~/.{APP_NAME.lower()}/token.json`
+- App directory: `{APP_DIR}`
+- Configuration files: `credentials.json`, `token.json`, `.env`
 
 ## Scopes used
 
@@ -405,7 +386,7 @@ This repository contains a local desktop Python app that accesses the user's Gma
 
 ## Packaging & distribution notes
 
-- When creating an executable with PyInstaller, make sure your app reads `credentials.json` and writes `token.json` to the user app folder (not inside the exe).
+- When creating an executable with PyInstaller, credentials and tokens are stored in the same directory as the executable.
 - Add the `token.json` and `credentials.json` paths to your `.gitignore` file.
 
 """
@@ -430,9 +411,12 @@ This repository contains a local desktop Python app that accesses the user's Gma
     else:
         print("✅ credentials.example.json already exists – not overwriting.")
 
-
 def setup_interactive():
     print(f"\n=== {APP_NAME} setup ===\n")
+    
+    # Show debug information
+    debug_paths()
+    
     ensure_app_dir()
 
     if CREDENTIALS_PATH.exists():
@@ -507,7 +491,6 @@ def setup_interactive():
     print(f"   {CREDENTIALS_PATH.name}")
     print(f"   {TOKEN_PATH.name}")
     print(f"   .env")
-
 
 if __name__ == '__main__':
     try:

@@ -33,6 +33,7 @@ class Communicator:
     
     def poll_commands(self, callback_func):
         print(f"**START POLL COMMANDS** - (poll_commands)")
+        time.sleep(0.05)
 
         while True:
             try:

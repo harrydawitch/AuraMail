@@ -8,8 +8,7 @@ import sys
 import webbrowser
 from pathlib import Path
 from typing import Optional, Callable
-import json
-import shutil
+
 
 import sys
 from pathlib import Path
@@ -31,13 +30,19 @@ from setup import (
     ENV_PATH
 )
 
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / Path("assets")
+
 class SetupStartupGUI:
     """
     A GUI that handles both initial setup and startup progress.
     Shows setup screens if not configured, otherwise shows startup progress.
     """
+
     
     def __init__(self, on_complete_callback: Optional[Callable] = None):
+
+        
         self.on_complete_callback = on_complete_callback
         self.setup_complete = False
         self.startup_complete = False
@@ -47,6 +52,7 @@ class SetupStartupGUI:
         # Setup the main window
         self.setup_window()
         self.check_initial_status()
+
         
     def setup_window(self):
         """Initialize the main window"""
@@ -54,11 +60,20 @@ class SetupStartupGUI:
         ctk.set_default_color_theme("blue")
         
         self.root = ctk.CTk()
-        self.root.title("SmartEmailBot Setup")
-        self.root.geometry("600x500")
-        self.root.resizable(False, False)
+        self.center_window()
+        self.root.wm_attributes('-toolwindow', False)
         
-        # Center the window
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SmartEmailBot")
+        except:
+            pass
+        
+        self.root.title("SmartEmailBot Setup")
+        self.root.geometry("580x520")
+        self.root.resizable(False, False)
+        self._setup_app_icon()
+        
         self.center_window()
         
         # Main container
@@ -68,9 +83,9 @@ class SetupStartupGUI:
     def center_window(self):
         """Center the window on screen"""
         self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (600 // 2)
-        y = (self.root.winfo_screenheight() // 2) - (500 // 2)
-        self.root.geometry(f"600x500+{x}+{y}")
+        x = (self.root.winfo_screenwidth() // 2) - (580 // 2)
+        y = (self.root.winfo_screenheight() // 2) - (520 // 2)
+        self.root.geometry(f"580x520+{x}+{y}")
         
     def check_initial_status(self):
         """Check if setup is needed or if we can go straight to startup"""
@@ -88,14 +103,13 @@ class SetupStartupGUI:
         # Title
         title = ctk.CTkLabel(
             self.main_frame, 
-            text="🤖 SmartEmailBot Setup", 
+            text="SmartEmailBot Setup", 
             font=ctk.CTkFont(size=24, weight="bold")
         )
         title.pack(pady=20)
         
         # Welcome message
-        welcome_text = """
-Welcome to SmartEmailBot! 
+        welcome_text = """Welcome to SmartEmailBot! 
 
 This intelligent email assistant will help you manage your Gmail inbox with AI-powered classification, summarization, and response generation.
 
@@ -111,7 +125,7 @@ Before we start, we need to set up a few things:
         welcome_label.pack(pady=10)
         
         # Missing components
-        missing_text = f"Missing components: {', '.join(missing_components)}"
+        missing_text = f"{'\n'.join(missing_components)}"
         missing_label = ctk.CTkLabel(
             self.main_frame,
             text=missing_text,
@@ -139,26 +153,28 @@ Setup will configure:
         
         # Buttons
         button_frame = ctk.CTkFrame(self.main_frame)
-        button_frame.pack(pady=20, fill="x")
-        
-        start_button = ctk.CTkButton(
-            button_frame,
-            text="🚀 Start Setup",
-            command=self.start_setup_flow,
-            font=ctk.CTkFont(size=16, weight="bold"),
-            height=40
-        )
-        start_button.pack(side="left", padx=10, expand=True, fill="x")
+        button_frame.pack(pady=5, fill="both", side= "bottom")
         
         cancel_button = ctk.CTkButton(
             button_frame,
-            text="❌ Cancel",
+            text="Cancel",
             command=self.cancel_setup,
             fg_color="gray",
             hover_color="dark gray",
+            font=ctk.CTkFont(size=14, weight="bold"),
             height=40
         )
-        cancel_button.pack(side="right", padx=10)
+        cancel_button.pack(side="bottom", pady=2, expand= True, fill= "both")
+        
+        start_button = ctk.CTkButton(
+            button_frame,
+            text="Start Setup",
+            command=self.start_setup_flow,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40
+        )
+        start_button.pack(side="bottom", pady=2, expand=True, fill= "both")
+    
         
     def start_setup_flow(self):
         """Start the setup flow"""
@@ -168,6 +184,17 @@ Setup will configure:
     def show_gmail_setup(self):
         """Show Gmail API setup screen"""
         self.clear_frame()
+        
+        # Back button
+        back_button = ctk.CTkButton(
+            self.main_frame,
+            text="← Back",
+            command=lambda: self.check_initial_status(),
+            fg_color="gray",
+            hover_color="dark gray",
+            width=100
+        )
+        back_button.pack(pady=10, padx= 10, side= "top", anchor="w")
         
         # Progress indicator
         progress_text = f"Step 1 of 3: Gmail API Setup"
@@ -191,10 +218,11 @@ Setup will configure:
 To access Gmail, SmartEmailBot needs API credentials from Google Cloud Console.
 
 If you don't have credentials.json yet:
-1. Click 'Open Google Cloud Console' below
-2. Create OAuth credentials (Desktop Application)
-3. Download the credentials.json file
-4. Return here and select the file
+
+    1. Click 'Open Google Cloud Console' below
+    2. Create credentials -> OAuth client ID -> Desktop app
+    3. Create -> Download JSON
+    4. Return here and select the file that you just downloaded
         """
         
         instructions_label = ctk.CTkLabel(
@@ -220,21 +248,15 @@ If you don't have credentials.json yet:
                 self.main_frame,
                 text="Next: OAuth Setup →",
                 command=self.show_oauth_setup,
-                font=ctk.CTkFont(size=14, weight="bold")
+                font=ctk.CTkFont(size=16, weight="bold"),
+                height=50,
             )
-            next_button.pack(pady=20)
+            next_button.pack(pady=(75,10), expand= True)
+            
         else:
             # Buttons for credential setup
             button_frame = ctk.CTkFrame(self.main_frame)
-            button_frame.pack(pady=20, fill="x")
-            
-            cloud_button = ctk.CTkButton(
-                button_frame,
-                text="🌐 Open Google Cloud Console",
-                command=self.open_cloud_console,
-                height=40
-            )
-            cloud_button.pack(pady=5, fill="x")
+            button_frame.pack(pady=(10,10), fill="x", side= "bottom")
             
             file_button = ctk.CTkButton(
                 button_frame,
@@ -244,19 +266,17 @@ If you don't have credentials.json yet:
                 fg_color="green",
                 hover_color="dark green"
             )
-            file_button.pack(pady=5, fill="x")
+            file_button.pack(pady=5, fill="x", side="bottom")
             
-        # Back button
-        back_button = ctk.CTkButton(
-            self.main_frame,
-            text="← Back",
-            command=lambda: self.check_initial_status(),
-            fg_color="gray",
-            hover_color="dark gray",
-            width=100
-        )
-        back_button.pack(side="bottom", pady=10)
-        
+            cloud_button = ctk.CTkButton(
+                button_frame,
+                text="Open Google Cloud Console 🌐 ",
+                command=self.open_cloud_console,
+                height=40
+            )
+            cloud_button.pack(pady=5, fill="x", side="bottom")
+            
+
     def open_cloud_console(self):
         """Open Google Cloud Console for credential setup"""
         try:
@@ -289,6 +309,17 @@ If you don't have credentials.json yet:
     def show_oauth_setup(self):
         """Show OAuth authorization screen"""
         self.clear_frame()
+        
+        # Back button
+        back_button = ctk.CTkButton(
+            self.main_frame,
+            text="← Back",
+            command=self.show_gmail_setup,
+            fg_color="gray",
+            hover_color="dark gray",
+            width=100
+        )
+        back_button.pack(side="top", pady=10, padx= 10, anchor= "w")
         
         # Progress indicator
         progress_text = f"Step 2 of 3: OAuth Authorization"
@@ -343,32 +374,22 @@ This is secure and uses Google's OAuth 2.0 standard.
                 self.main_frame,
                 text="Next: API Configuration →",
                 command=self.show_api_setup,
-                font=ctk.CTkFont(size=14, weight="bold")
+                font=ctk.CTkFont(size=16, weight="bold"),
+                height=50,
             )
-            next_button.pack(pady=20)
+            next_button.pack(pady=(75,10), expand= True)    
+         
+
         else:
             # Authorization button
             auth_button = ctk.CTkButton(
                 self.main_frame,
-                text="🚀 Start Authorization",
+                text="Start Authorization",
                 command=self.start_oauth_flow,
                 font=ctk.CTkFont(size=16, weight="bold"),
                 height=50,
-                fg_color="blue",
-                hover_color="dark blue"
             )
-            auth_button.pack(pady=20)
-            
-        # Back button
-        back_button = ctk.CTkButton(
-            self.main_frame,
-            text="← Back",
-            command=self.show_gmail_setup,
-            fg_color="gray",
-            hover_color="dark gray",
-            width=100
-        )
-        back_button.pack(side="bottom", pady=10)
+            auth_button.pack(pady=(75,10), expand= True)
         
     def start_oauth_flow(self):
         """Start OAuth flow in a separate thread"""
@@ -429,23 +450,35 @@ This is secure and uses Google's OAuth 2.0 standard.
     def show_api_setup(self):
         """Show API keys and email configuration"""
         self.clear_frame()
+
+        # Back button
+        back_button = ctk.CTkButton(
+            self.main_frame,
+            text="← Back",
+            command=self.show_oauth_setup,
+            fg_color="gray",
+            hover_color="dark gray",
+            width=100
+        )
+        back_button.pack(pady=10, padx= 10, side= "top", anchor="w")
         
+                
         # Progress indicator
-        progress_text = f"Step 3 of 3: API Configuration"
+        progress_text = f"Step 3 of 3: OpenAI API Configuration"
         progress_label = ctk.CTkLabel(
             self.main_frame,
             text=progress_text,
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        progress_label.pack(pady=10)
+        progress_label.pack(pady=5)
         
         # Title
         title = ctk.CTkLabel(
             self.main_frame,
-            text="🔑 API Configuration",
+            text="API Configuration",
             font=ctk.CTkFont(size=20, weight="bold")
         )
-        title.pack(pady=10)
+        title.pack(pady=5)
         
         # Instructions
         instructions = ctk.CTkLabel(
@@ -453,7 +486,7 @@ This is secure and uses Google's OAuth 2.0 standard.
             text="Enter your OpenAI API key and email information:",
             font=ctk.CTkFont(size=14)
         )
-        instructions.pack(pady=10)
+        instructions.pack(pady=5)
         
         # Input fields container (with scrollable frame if needed)
         input_container = ctk.CTkScrollableFrame(self.main_frame)
@@ -510,30 +543,20 @@ This is secure and uses Google's OAuth 2.0 standard.
         
         # Buttons frame - Fixed positioning at bottom
         button_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        button_frame.pack(side="bottom", pady=10, padx=20, fill="x")
+        button_frame.pack(side="bottom", pady=(5, 5), padx=20, fill="x")
         
         # Complete setup button
         complete_button = ctk.CTkButton(
             button_frame,
-            text="✅ Complete Setup",
+            text="Complete Setup",
             command=self.complete_setup,
             font=ctk.CTkFont(size=16, weight="bold"),
-            height=45,
+            height=35,
             fg_color="green",
             hover_color="dark green"
         )
-        complete_button.pack(pady=(0, 5), fill="x")
+        complete_button.pack(pady=(0, 5), fill="both")
         
-        # Back button
-        back_button = ctk.CTkButton(
-            button_frame,
-            text="← Back",
-            command=self.show_oauth_setup,
-            fg_color="gray",
-            hover_color="dark gray",
-            height=35
-        )
-        back_button.pack(pady=(5, 0), fill="x")
         
     def complete_setup(self):
         """Complete the setup process"""
@@ -766,6 +789,23 @@ This is secure and uses Google's OAuth 2.0 standard.
         """Clear all widgets from main frame"""
         for widget in self.main_frame.winfo_children():
             widget.destroy()
+    
+    def _setup_app_icon(self):
+        """Simple application icon setup"""
+        try:
+            ico_path = ASSETS_PATH / "icon.ico"
+            
+            
+            if ico_path.exists():
+                self.root.iconbitmap(str(ico_path))
+            else:
+                print(f"❌ Icon file not found at: {ico_path}")
+                
+        except Exception as e:
+            print(f"❌ Icon setup failed: {e}")
+            
+        # Force window update
+        self.root.update()
             
     def run(self):
         """Run the setup/startup GUI"""

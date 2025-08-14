@@ -1,55 +1,23 @@
-# # Put this at the very top of main.py BEFORE importing modules that expect env/credentials
-# import os
-# import sys
-
-# def resource_path(filename: str) -> str:
-#     """
-#     Return an absolute path to `filename` that works in development and when
-#     bundled by PyInstaller. When bundled, PyInstaller extracts files into
-#     sys._MEIPASS.
-#     """
-#     base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
-#     return os.path.join(base_path, filename)
-
-# # Resolved runtime paths (use these instead of plain "credentials.json"/"token.json"/".env")
-# CREDENTIALS_PATH = resource_path("credentials.json")
-# TOKEN_PATH = resource_path("token.json")
-# ENV_PATH = resource_path(".env")
-
-# # Try to load .env from the bundle / cwd (safe if python-dotenv not installed)
-# try:
-#     from dotenv import load_dotenv
-#     load_dotenv(ENV_PATH)
-# except Exception:
-#     # If python-dotenv is not installed, ignore (your code can still read os.environ)
-#     pass
-
-
 import time
 import threading
 import sys
+import os
 from datetime import datetime
 from typing import Dict
 from dataclasses import dataclass
+from pathlib import Path
 
-
-@dataclass
-class AppEvent:
-    """Event structure for communication between backend and frontend"""
-    event_type: str
-    data: Dict
-    timestamp: datetime = None
-    
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
-
+# Import unified path utilities
+from path_utils import debug_paths, load_environment
 
 def check_and_run_setup_gui():
     """
     Check if setup is complete and run GUI setup if needed.
     Returns True if setup is complete, False if user cancelled setup.
     """
+    # Add debug information
+    debug_paths()
+    
     from setup import check_setup_status
     
     is_complete, missing_components = check_setup_status()
@@ -97,7 +65,6 @@ def check_and_run_setup_gui():
         print("Please run setup.py manually to complete the setup.")
         return False
 
-
 class EmailApp:
     """Main application class that connects backend and frontend"""
     
@@ -137,11 +104,7 @@ class EmailApp:
             print("Startup GUI completed - ready to launch main app!")
             
         self.startup_gui = SetupStartupGUI(on_complete_callback=on_startup_complete)
-        
-        # Show only the startup progress (skip setup screens)
-        self.startup_gui.setup_complete = True
-        self.startup_gui.show_startup_progress()
-        
+ 
         # Start initialization in separate thread during GUI startup
         self.backend_thread = threading.Thread(target=self.initialize_with_progress, daemon=True)
         self.backend_thread.start()
@@ -154,6 +117,11 @@ class EmailApp:
     def initialize_with_progress(self):
         """Initialize all components with progress updates to the GUI"""
         try:
+            # Check if we're in startup progress mode (not setup mode)
+            if not hasattr(self.startup_gui, 'progress_var'):
+                print("Setup mode detected - skipping progress updates")
+                return
+            
             # Update progress as components initialize
             steps = [
                 ("Loading configuration...", self.load_config_step),
@@ -161,7 +129,6 @@ class EmailApp:
                 ("Checking OpenAI connection...", self.check_openai_step),
                 ("Setting up database...", self.setup_database_step),
                 ("Finalizing startup...", self.finalize_startup_step),
-                ("Starting backend services...", self.start_backend_services_step)
             ]
             
             for i, (status_text, func) in enumerate(steps):
@@ -179,11 +146,17 @@ class EmailApp:
                 time.sleep(1)  # Visual feedback delay
             
             # Complete
-            if self.startup_gui:
-                self.startup_gui.root.after(0, lambda: 
-                                           self.startup_gui.update_progress(100, "✅ Startup complete!"))
-                time.sleep(1)
-                self.startup_gui.root.after(0, self.startup_gui.complete_startup)
+            if self.startup_gui and hasattr(self.startup_gui, 'progress_var'):
+                def safe_complete():
+                    try:
+                        self.startup_gui.update_progress(100, "✅ Startup complete!")
+                        # Small delay then complete
+                        self.startup_gui.root.after(1000, self.startup_gui.complete_startup)
+                    except Exception:
+                        # Widget already destroyed, just complete
+                        self.startup_gui.complete_startup()
+                
+                self.startup_gui.root.after(0, safe_complete)
                 
         except Exception as e:
             if self.startup_gui:
@@ -192,6 +165,9 @@ class EmailApp:
 
     def load_config_step(self):
         """Load application configuration"""
+        print("Loading configuration...")
+        debug_paths()  
+        
         from src.email_service import EmailService
         EmailService.load_from_file()
         
@@ -273,23 +249,8 @@ class EmailApp:
         
     def setup_database_step(self):
         """Setup database connections"""
-        time.sleep(1)  # Simulate database setup
+        time.sleep(1.5)  # Simulate database setup
         return "Database connections established"
-        
-    def start_backend_services_step(self):
-        """Initialize backend services (but don't start the monitoring loop yet)"""
-        from src.backend import EmailManager
-        
-        # Initialize EmailManager but don't start the monitoring loop
-        self.backend = EmailManager(
-            model=self.workflow_model,
-            communicator=self.communicator,
-            gmail_api=self.gmail_tool,
-            check_interval=self.check_interval,
-            db_path=self.db_path
-        )
-        
-        return "Backend services initialized"
         
     def finalize_startup_step(self):
         """Finalize startup process"""
@@ -298,7 +259,17 @@ class EmailApp:
 
     def start_backend(self):
         """Start the email monitoring backend (simplified - health checks already done)"""
-        print("Starting backend monitoring loop...")
+        print("==Starting backend==")
+        
+        from src.backend import EmailManager
+        
+        self.backend = EmailManager(
+            model=self.workflow_model,
+            communicator=self.communicator,
+            gmail_api=self.gmail_tool,
+            check_interval=self.check_interval,
+            db_path=self.db_path
+        )
         
         if not self.backend:
             raise RuntimeError("Backend not initialized. Run initialization first.")
@@ -318,7 +289,7 @@ class EmailApp:
         pending_emails = EmailService.load_emails_by_category("human")
                 
         if notify_emails or pending_emails:
-            notification.startup(len(notify_emails), pending_emails)
+            notification.startup(len(notify_emails), len(pending_emails))
         
         from src.ui.gui import EmailAgentGUI
         self.gui = EmailAgentGUI(communicator=self.communicator)
@@ -331,8 +302,8 @@ class EmailApp:
             # Start backend monitoring in separate thread
             self.backend_thread = threading.Thread(target=self.start_backend, daemon=True)
             self.backend_thread.start()
-            print("===BACKEND STARTED===")
             time.sleep(2)  # Reduced sleep since initialization is already done
+            print("\n===BACKEND STARTED===")
             
             # Start frontend
             self.start_frontend()
@@ -369,7 +340,7 @@ class EmailApp:
         # Wait for backend thread to finish
         if self.backend_thread and self.backend_thread.is_alive():
             print("Waiting for backend thread to finish...")
-            self.backend_thread.join(timeout=5)
+            self.backend_thread.join(timeout=10)
             
             if self.backend and hasattr(self.backend, 'workflow_manager'):
                 self.backend.workflow_manager.save_workflows()
@@ -379,14 +350,29 @@ class EmailApp:
             if self.backend_thread.is_alive():
                 print("=== Backend thread did not stop gracefully ===")
 
-
 def main():
     """Main function to start the connected application"""
     try:
-        # Check setup with GUI if needed
+        print("=== SMARTEMAILBOT STARTUP ===")
+        
+        # Load environment variables first
+        print("Loading environment variables...")
+        env_loaded = load_environment()
+        
+        # Show debug information
+        debug_paths()
+        
+        if not env_loaded:
+            print("⚠️  Environment not fully loaded, but continuing with setup check...")
+        
+        # Check setup before creating app
         if not check_and_run_setup_gui():
-            print("\nExiting application due to incomplete setup.")
+            print("Setup required but not completed. Exiting.")
             sys.exit(1)
+        
+        # Re-load environment after potential setup
+        print("Re-loading environment after setup...")
+        load_environment()
         
         # Create the application instance (no initialization yet)
         app = EmailApp(
@@ -402,15 +388,16 @@ def main():
             print("Startup cancelled or failed")
             sys.exit(1)
             
-        print("===INITIALIZATION COMPLETED===")
+        print("===INITIALIZATION COMPLETED===\n")
         
         # Now run the application with pre-initialized components
         app.run()
         
     except Exception as e:
         print(f"Failed to start application: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

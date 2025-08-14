@@ -482,19 +482,20 @@ class EmailManager:
         
         self.communicator.set_dependencies(self.processor, self.workflow_manager)
         
+    
+    def run(self) -> None: 
+        """Main monitoring loop with token refresh"""
+        print("\n===Starting email monitoring===")
+        
+        last_token_check = 0
+        TOKEN_CHECK_INTERVAL = 3600  # 1 hour in seconds
+
         self.commands_thread = threading.Thread(
             target=self.communicator.poll_commands, 
             args=(self.communicator.process_commands,), 
             daemon=True
         ).start()
-    
-    def run(self) -> None: 
-        """Main monitoring loop with token refresh"""
-        print("\nStarting email monitoring...")
-        
-        last_token_check = 0
-        TOKEN_CHECK_INTERVAL = 3600  # 1 hour in seconds
-        
+
         try:
             while True:
                 try:

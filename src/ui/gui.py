@@ -486,23 +486,28 @@ class EmailGrid:
         try:
             # Hide empty content if it exists
             self._hide_empty_content()
-            
+            self.email_rows.clear()
             # Get all children before starting destruction
             children = list(self.grid_frame.winfo_children())
             
-            # Destroy children one by one with error handling
-            for widget in children:
-                try:
-                    if widget.winfo_exists():
-                        widget.destroy()
-                except Exception as e:
-                    # Widget might already be destroyed
-                    pass
-                    
-            self.email_rows.clear()
+        # Use after_idle to destroy widgets safely
+            def destroy_widgets():
+                for widget in children:
+                    try:
+                        if widget.winfo_exists():
+                            widget.destroy()
+                    except Exception as e:
+                        # Widget might already be destroyed
+                        pass
             
+            # Schedule widget destruction for next idle cycle
+            if hasattr(self.parent, 'after_idle'):
+                self.parent.after_idle(destroy_widgets)
+            else:
+                destroy_widgets()
+                
         except Exception as e:
-            print(f"Error clearing grid: {e}")            
+            print(f"Error clearing grid: {e}")          
 
     
     def show(self):
@@ -884,34 +889,37 @@ class EmailDetailView:
         EmailService.notify_to_ignore(self.current_email)
         
         if self.action_callback:
-            self.action_callback("refresh")
+            self.content_frame.after(10, lambda: self.action_callback("refresh"))
             
         root.send_commands(type, data)
                     
     
     def _handle_respond(self):
-        def on_context_provided(context: str):
+        try:
+            def on_context_provided(context: str):
 
-            root = self._get_root()
-            type = "resume_workflow"
-            data = {
-                "flag": True,
-                "feedback": context,
-                "workflow_id": self.current_email.workflow_id
-            }   
-            EmailService.remove_notify(self.current_email)
-            if self.action_callback:
-                self.action_callback("refresh")
+                root = self._get_root()
+                type = "resume_workflow"
+                data = {
+                    "flag": True,
+                    "feedback": context,
+                    "workflow_id": self.current_email.workflow_id
+                }   
+                EmailService.remove_notify(self.current_email)
+                if self.action_callback:
+                    self.content_frame.after(10, lambda: self.action_callback("refresh"))
 
-            root.send_commands(type, data)
+                root.send_commands(type, data)
 
-        dialog = ContextDialog(
-            self.content_frame.master.master,
-            title="Provide Response Context",
-            prompt="Please provide context for your response to help the AI generate an appropriate email:",
-            callback=on_context_provided
-        )
-
+            dialog = ContextDialog(
+                self.content_frame.master.master,
+                title="Provide Response Context",
+                prompt="Please provide context for your response to help the AI generate an appropriate email:",
+                callback=on_context_provided
+            )
+            
+        except Exception:
+            pass
 
     def _handle_approve(self):
         root = self._get_root()
@@ -924,32 +932,39 @@ class EmailDetailView:
         EmailService.approve_draft_response(self.current_email)
         
         if self.action_callback:
-            self.action_callback("refresh")
+            self.content_frame.after(10, lambda: self.action_callback("refresh"))
             
         root.send_commands(command_type= type, data= data)
 
 
     def _handle_reject(self):
-        def on_feedback_provided(feedback: str):
-            root = self._get_root()
-            type = "reject"
-            data = {
-                "flag": False,
-                "feedback": feedback,
-                "workflow_id": self.current_email.workflow_id
-            }
+        try:
+            def on_feedback_provided(feedback: str):
+                root = self._get_root()
+                type = "reject"
+                data = {
+                    "flag": False,
+                    "feedback": feedback,
+                    "workflow_id": self.current_email.workflow_id
+                }
 
-            self._show_loading_draft()
+                self._show_loading_draft()
                 
-            root.send_commands(type, data)
+                if self.action_callback:
+                    self.content_frame.after(100, lambda: self.action_callback("refresh"))
+                    
+                root.send_commands(type, data)
 
-                
-        dialog = ContextDialog(
-            self.content_frame.master.master,
-            title="Provide Feedback",
-            prompt="Please provide feedback to help the AI improve the response:",
-            callback=on_feedback_provided
-        )
+                    
+            dialog = ContextDialog(
+                self.content_frame.master.master,
+                title="Provide Feedback",
+                prompt="Please provide feedback to help the AI improve the response:",
+                callback=on_feedback_provided
+            )
+        
+        except Exception:
+            pass
 
     def _show_loading_draft(self):
         self.draft_text.configure(state="normal", text_color="orange")
@@ -1447,37 +1462,39 @@ class EmailRow:
         
         # Move email to ignore category
         EmailService.notify_to_ignore(self.email)
-        self.on_click("refresh")
-
+        self.parent.after(10, lambda: self.on_click("refresh"))
         root.send_commands(type, data)
 
     def _handle_respond(self):
         """Handle respond button click"""
         
-        def on_context_provided(context: str):
-            """Callback function called when user provides context"""
-            root = self._get_root()
-            
-            # Send command to backend with user's context
-            type = "resume_workflow"
-            data = {
-                "flag": True,
-                "feedback": context,
-                "workflow_id": self.email.workflow_id
-            }
-            
-            EmailService.remove_notify(self.email)
-            self.on_click("refresh")
-            
-            root.send_commands(type, data)
+        try:
+            def on_context_provided(context: str):
+                """Callback function called when user provides context"""
+                root = self._get_root()
                 
-        # Show context dialog with callback
-        dialog = ContextDialog(
-            self.parent.master.master,
-            title="Provide Response Context",
-            prompt="Please provide context for your response to help the AI generate an appropriate email:",
-            callback=on_context_provided  
-        )
+                # Send command to backend with user's context
+                type = "resume_workflow"
+                data = {
+                    "flag": True,
+                    "feedback": context,
+                    "workflow_id": self.email.workflow_id
+                }
+                
+                EmailService.remove_notify(self.email)
+                self.parent.after(10, lambda: self.on_click("refresh"))
+                root.send_commands(type, data)
+                    
+            # Show context dialog with callback
+            dialog = ContextDialog(
+                self.parent.master.master,
+                title="Provide Response Context",
+                prompt="Please provide context for your response to help the AI generate an appropriate email:",
+                callback=on_context_provided  
+            )
+            
+        except Exception:
+            pass
 
 
     def _handle_approve(self):
@@ -1492,38 +1509,37 @@ class EmailRow:
         
         # Send the draft response
         EmailService.approve_draft_response(self.email)
-        self.on_click("refresh")
-        
+        self.parent.after(10, lambda: self.on_click("refresh"))        
         root.send_commands(type, data)
     
     def _handle_reject(self):
         """Handle reject button click"""
 
-        
-        def on_context_provided(feedback: str):
-            """Callback function called when user provides context"""
-            root = self._get_root()
-            
-            # Send command to backend with user's context
-            type = "reject"
-            data = {
-                "flag": False,
-                "feedback": feedback,
-                "workflow_id": self.email.workflow_id
-            }
-            
-            self.on_click("refresh")
-            
-            root.send_commands(type, data)
+        try:
+            def on_context_provided(feedback: str):
+                """Callback function called when user provides context"""
+                root = self._get_root()
                 
-        # Show context dialog with callback
-        dialog = ContextDialog(
-            self.parent.master.master,
-            title="Provide feedback",
-            prompt="Please provide feedback to help the AI improve the response:",
-            callback=on_context_provided  
-        )
-
+                # Send command to backend with user's context
+                type = "reject"
+                data = {
+                    "flag": False,
+                    "feedback": feedback,
+                    "workflow_id": self.email.workflow_id
+                }
+                
+                self.parent.after(10, lambda: self.on_click("refresh"))   
+                root.send_commands(type, data)
+                    
+            # Show context dialog with callback
+            dialog = ContextDialog(
+                self.parent.master.master,
+                title="Provide feedback",
+                prompt="Please provide feedback to help the AI improve the response:",
+                callback=on_context_provided  
+            )
+        except Exception:
+            pass
 
         
     def _get_root(self):
@@ -1564,10 +1580,9 @@ class EmailAgentGUI(CTk):
         super().__init__()
         self.wm_attributes('-toolwindow', False)
         
-    
         try:
             import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SmartEmailBot.1.0")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SmartEmailBot")
         except:
             pass
 
