@@ -16,7 +16,749 @@
     
     <title>SmartEmailBot - Intelligent Email Automation System</title>
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-    <link rel="stylesheet" href="assets/style.css">
+    <style>
+/* ================================
+   RESET & BASE STYLES
+   ================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fff;
+    overflow-x: hidden;
+}
+
+/* ================================
+   UTILITY CLASSES
+   ================================ */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: #2c3e50;
+    position: relative;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    border-radius: 2px;
+}
+
+/* ================================
+   NAVIGATION
+   ================================ */
+
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 20px;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.logo-emoji {
+    font-size: 2rem;
+    margin-right: 10px;
+}
+
+.logo {
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+    border-radius: 6px;
+}
+
+.nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-menu a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    position: relative;
+}
+
+.nav-menu a:hover {
+    color: #667eea;
+}
+
+.nav-menu a::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #667eea;
+    transition: width 0.3s ease;
+}
+
+.nav-menu a:hover::after {
+    width: 100%;
+}
+
+/* ================================
+   HERO SECTION
+   ================================ */
+
+.hero {
+    background: linear-gradient(135deg, #4A90E2 0%, #7B68EE 50%, #9B59B6 100%);
+    color: white;
+    padding: 8rem 0 6rem;
+    margin-top: 70px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.05"><polygon points="0,100 1000,0 1000,100"/></svg>');
+    background-size: cover;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-title {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hero-title .emoji {
+    display: inline-block;
+    animation: bounce 2s infinite;
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.95;
+}
+
+.hero-description {
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ================================
+   BUTTONS
+   ================================ */
+
+.cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #4A90E2, #5B9BD5);
+    color: white;
+    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #357ABD, #4A90E2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(74, 144, 226, 0.6);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.btn-text {
+    background: transparent;
+    color: currentColor;
+    padding: 0.5rem 1rem;
+}
+
+.btn-text:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.btn-subtitle {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.8;
+    font-weight: normal;
+    margin-top: 0.2rem;
+}
+
+.btn i {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+/* Download info stats */
+.download-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    text-align: center;
+    opacity: 0.9;
+}
+
+.info-item strong {
+    display: block;
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
+}
+
+.info-item span {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* ================================
+   FEATURES SECTION
+   ================================ */
+
+.features {
+    padding: 6rem 0;
+    background: #f8f9fa;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.feature-card {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.feature-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+    display: block;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.feature-card h3 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.feature-card p {
+    color: #666;
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+/* ================================
+   WORKFLOW STEPS SECTION
+   ================================ */
+
+.workflow {
+    padding: 6rem 0;
+    background: white;
+}
+
+.workflow-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.step-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.step-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border-color: #4A90E2;
+}
+
+.step-number {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #4A90E2, #7B68EE);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+}
+
+.step-content h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.step-content p {
+    color: #666;
+    line-height: 1.6;
+}
+
+/* ================================
+   ARCHITECTURE SECTION
+   ================================ */
+
+.architecture {
+    padding: 6rem 0;
+    background: #f8f9fa;
+}
+
+.arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.arch-card {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #4A90E2;
+    transition: all 0.3s ease;
+}
+
+.arch-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+.arch-card h3 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+}
+
+.arch-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.arch-card li {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    position: relative;
+    color: #666;
+    line-height: 1.6;
+}
+
+.arch-card li::before {
+    content: '▶';
+    position: absolute;
+    left: 0;
+    color: #4A90E2;
+    font-size: 0.8rem;
+}
+
+.arch-card strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* ================================
+   FAQ SECTION
+   ================================ */
+
+.faq {
+    padding: 6rem 0;
+    background: white;
+}
+
+.faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.faq-item {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 15px;
+    border-left: 4px solid #667eea;
+    transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.faq-item h4 {
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.faq-item p {
+    color: #666;
+    line-height: 1.6;
+}
+
+.faq-item a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.faq-item a:hover {
+    text-decoration: underline;
+}
+
+/* ================================
+   FINAL CTA SECTION
+   ================================ */
+
+.final-cta {
+    padding: 6rem 0;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    text-align: center;
+}
+
+.cta-content h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.cta-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+/* ================================
+   FOOTER
+   ================================ */
+
+.footer {
+    background: #2c3e50;
+    color: white;
+    padding: 4rem 0 2rem;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.footer-section h4 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: #ecf0f1;
+}
+
+.footer-section p {
+    opacity: 0.8;
+    line-height: 1.6;
+}
+
+.footer-section ul {
+    list-style: none;
+}
+
+.footer-section li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-section a {
+    color: #bdc3c7;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-section a:hover {
+    color: #667eea;
+}
+
+.footer-bottom {
+    border-top: 1px solid #34495e;
+    padding-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-badges img {
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
+
+/* ================================
+   ANIMATIONS
+   ================================ */
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.feature-card,
+.faq-item {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+/* ================================
+   RESPONSIVE DESIGN
+   ================================ */
+
+@media (max-width: 768px) {
+    .hero {
+        padding: 6rem 0 4rem;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+    }
+    
+    .download-info {
+        gap: 1rem;
+    }
+    
+    .features-grid,
+    .faq-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .feature-card {
+        padding: 2rem;
+    }
+    
+    .footer-bottom {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    /* Mobile Navigation */
+    .nav-menu {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: white;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        padding: 1rem;
+    }
+    
+    .nav-menu.active {
+        display: flex;
+    }
+    
+    .mobile-menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .hero {
+        padding: 5rem 0 3rem;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.8rem;
+    }
+    
+    .feature-card {
+        padding: 1.5rem;
+    }
+}
+
+/* ================================
+   UTILITY CLASSES
+   ================================ */
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.hidden { display: none; }
+.visible { display: block; }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -30,7 +772,6 @@
                 <li><a href="#features">Features</a></li>
                 <li><a href="#demo">Demo</a></li>
                 <li><a href="#download">Download</a></li>
-                <li><a href="#setup">Setup</a></li>
                 <li><a href="https://github.com/harrydawitch/SmartEmailBot" target="_blank">GitHub</a></li>
             </ul>
         </div>
@@ -53,15 +794,14 @@
                 
                 <!-- Main download buttons -->
                 <div class="cta-buttons" id="download">
-                    <a href="downloads/SmartEmailBot_setup.exe" class="btn btn-primary">
+                    <a href="../downloads/SmartEmailBot_setup.exe" class="btn btn-primary">
                         <i class="icon-download">⬇️</i>
-                        Download Source Code
-                        <span class="btn-subtitle">Python 3.8+ Required • Open Source</span>
+                        Download SmartEmailBot
                     </a>
                     <a href="https://github.com/harrydawitch/SmartEmailBot" class="btn btn-secondary" target="_blank">
                         <i class="icon-github">⭐</i>
                         View on GitHub
-                    </a>
+                    </a> 
                 </div>
 
                 <!-- Download stats/info -->
@@ -94,12 +834,12 @@
                     <p>Automatically categorizes incoming emails as "notify" (important) or "ignore" (spam/promotional) using advanced AI models.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">📝</div>
+                    <div class="feature-icon">📄</div>
                     <h3>Smart Summarization</h3>
                     <p>AI-powered email summaries for quick understanding of important messages without reading the full content.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">✍️</div>
+                    <div class="feature-icon">✏️</div>
                     <h3>Draft Response Generation</h3>
                     <p>Automatically generates contextual email responses that you can review, edit, and approve before sending.</p>
                 </div>
@@ -219,123 +959,6 @@
         </div>
     </section>
 
-    <!-- Installation & Setup -->
-    <section class="setup" id="setup">
-        <div class="container">
-            <h2 class="section-title">🚀 Quick Setup Guide</h2>
-            
-            <div class="setup-steps">
-                <div class="setup-card">
-                    <h3>📋 Prerequisites</h3>
-                    <ul>
-                        <li>Python 3.8 or higher</li>
-                        <li>Gmail account with API access</li>
-                        <li>OpenAI API key</li>
-                    </ul>
-                </div>
-                
-                <div class="setup-card">
-                    <h3>⬇️ Installation</h3>
-                    <div class="code-block">
-                        <code>
-# Clone the repository<br>
-git clone https://github.com/harrydawitch/SmartEmailBot.git<br>
-cd SmartEmailBot<br>
-python -m venv .venv<br><br>
-
-# Install dependencies<br>
-pip install -r requirements.txt
-                        </code>
-                    </div>
-                </div>
-                
-                <div class="setup-card">
-                    <h3>🔑 Gmail API Setup</h3>
-                    <div class="code-block">
-                        <code>
-# Run the setup script<br>
-python setup.py
-                        </code>
-                    </div>
-                    <p><strong>📖 Detailed setup guide:</strong> <a href="https://github.com/harrydawitch/SmartEmailBot/blob/main/setup.md" target="_blank">setup.md</a></p>
-                </div>
-                
-                <div class="setup-card">
-                    <h3>▶️ Run the Application</h3>
-                    <div class="code-block">
-                        <code>
-# Double-click to start<br>
-SmartEmailBot.vbs<br><br>
-
-# Or run directly<br>
-python main.py
-                        </code>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Project Structure -->
-    <section class="structure">
-        <div class="container">
-            <h2 class="section-title">📁 Project Structure</h2>
-            <div class="structure-display">
-                <pre><code>SmartEmailBot/
-├── 🚀 main.py                 # Application entry point
-├── ⚙️ setup.py               # Gmail API and environment setup
-├── 📋 requirements.txt       # Python dependencies
-├── 📂 src/
-│   ├── 🔧 backend.py         # Core email processing logic
-│   ├── 🔗 connect.py         # Frontend/backend communication
-│   ├── 📊 email_service.py   # Email data management
-│   ├── 🤖 nodes.py          # AI workflow components
-│   ├── 💬 prompts.py        # AI prompts and templates
-│   ├── 📝 states.py         # Workflow state management
-│   ├── 🛠️ utils.py          # Utility functions
-│   ├── 🗂️ workflow.py       # Workflow definitions
-│   └── 📂 ui/
-│       └── 🖥️ gui.py        # Desktop interface
-└── 📂 db/                    # Data storage
-    ├── checkpoints.sqlite    # Workflow persistence
-    ├── email_state.json     # Processing state
-    ├── emails.json          # Email data
-    └── workflows.json       # Active workflows</code></pre>
-            </div>
-        </div>
-    </section>
-
-    <!-- Configuration Section -->
-    <section class="config">
-        <div class="container">
-            <h2 class="section-title">⚙️ Configuration</h2>
-            <div class="config-grid">
-                <div class="config-card">
-                    <h3>🔐 Environment Variables</h3>
-                    <div class="code-block">
-                        <code>
-# Create .env file<br>
-OPENAI_API_KEY=your_openai_api_key<br>
-MY_EMAIL=your_email@gmail.com
-                        </code>
-                    </div>
-                </div>
-                <div class="config-card">
-                    <h3>🎛️ Application Settings</h3>
-                    <div class="code-block">
-                        <code>
-# Modify in main.py<br>
-app = EmailApp(<br>
-&nbsp;&nbsp;workflow_model="gpt-4o-mini",<br>
-&nbsp;&nbsp;check_interval=40,<br>
-)
-                        </code>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- FAQ Section -->
     <section class="faq">
         <div class="container">
@@ -376,10 +999,10 @@ app = EmailApp(<br>
                 <h2>Ready to automate your email workflow?</h2>
                 <p>Join the future of intelligent email management with AI-powered automation</p>
                 <div class="cta-buttons">
-                    <a href="https://github.com/harrydawitch/SmartEmailBot/archive/refs/heads/main.zip" class="btn btn-primary">
+                    <a href="../downloads/SmartEmailBot_setup.exe" class="btn btn-primary">
                         Download SmartEmailBot
                     </a>
-                    <a href="https://github.com/harrydawitch/SmartEmailBot/blob/main/setup.md" class="btn btn-secondary" target="_blank">
+                    <a href="https://peaceful-hound-55c.notion.site/SmartEmailBot-Setup-Guide-250d8c535eb6803c813bfcc923ee32ee" class="btn btn-secondary" target="_blank">
                         Setup Guide
                     </a>
                 </div>
@@ -402,7 +1025,7 @@ app = EmailApp(<br>
                         <li><a href="https://github.com/harrydawitch/SmartEmailBot">Source Code</a></li>
                         <li><a href="https://github.com/harrydawitch/SmartEmailBot/releases">Releases</a></li>
                         <li><a href="https://github.com/harrydawitch/SmartEmailBot/issues">Report Issues</a></li>
-                        <li><a href="https://github.com/harrydawitch/SmartEmailBot/blob/main/setup.md">Setup Guide</a></li>
+                        <li><a href="https://peaceful-hound-55c.notion.site/SmartEmailBot-Setup-Guide-250d8c535eb6803c813bfcc923ee32ee">Setup Guide</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
@@ -451,25 +1074,10 @@ app = EmailApp(<br>
         });
 
         // Track download clicks
-        document.querySelectorAll('a[href*="download"], a[href*="archive"]').forEach(link => {
+        document.querySelectorAll('a[href*="download"], a[href*=".exe"]').forEach(link => {
             link.addEventListener('click', function() {
                 console.log('Download started:', this.href);
                 // You can add analytics tracking here
-            });
-        });
-
-        // Copy code blocks to clipboard
-        document.querySelectorAll('.code-block code').forEach(codeBlock => {
-            codeBlock.addEventListener('click', function() {
-                const text = this.innerText;
-                navigator.clipboard.writeText(text).then(() => {
-                    // Visual feedback for copy
-                    const originalBg = this.style.backgroundColor;
-                    this.style.backgroundColor = '#4CAF50';
-                    setTimeout(() => {
-                        this.style.backgroundColor = originalBg;
-                    }, 300);
-                });
             });
         });
 
