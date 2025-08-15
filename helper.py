@@ -8,6 +8,7 @@ load_dotenv()
 def refresh_gmail_token():
     """
     Refresh Gmail token if expired using unified path system
+    Returns: (success: bool, message: str, was_refreshed: bool)
     """
     try:
         from google.oauth2.credentials import Credentials
@@ -26,16 +27,16 @@ def refresh_gmail_token():
         print(f"[GMAIL] Looking for credentials at: {CREDENTIALS_PATH}")
         
         if not TOKEN_PATH.exists():
-            return False, f"No token.json found at {TOKEN_PATH}. Run setup.py first."
+            return False, f"No token.json found at {TOKEN_PATH}. Run setup.py first.", False
             
         if not CREDENTIALS_PATH.exists():
-            return False, f"No credentials.json found at {CREDENTIALS_PATH}. Run setup.py first."
+            return False, f"No credentials.json found at {CREDENTIALS_PATH}. Run setup.py first.", False
         
         # Load existing credentials
         creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
         
         if creds and creds.valid:
-            return True, "Token is still valid."
+            return True, "Token is still valid.", False
             
         if creds and creds.expired and creds.refresh_token:
             print("Refreshing expired Gmail token...")
@@ -46,20 +47,20 @@ def refresh_gmail_token():
                 with open(TOKEN_PATH, 'w') as f:
                     f.write(creds.to_json())
                     
-                print(f"✓ Token refreshed and saved to {TOKEN_PATH}")
-                return True, "Token successfully refreshed."
+                print(f"✅ Token refreshed and saved to {TOKEN_PATH}")
+                return True, "Token successfully refreshed.", True
                 
             except Exception as refresh_error:
                 print(f"Failed to refresh token: {refresh_error}")
-                return False, f"Token refresh failed: {refresh_error}"
+                return False, f"Token refresh failed: {refresh_error}", False
         
         # If we get here, we need to re-authenticate
-        return False, "Token expired and cannot be refreshed. Run setup.py to re-authenticate."
+        return False, "Token expired and cannot be refreshed. Run setup.py to re-authenticate.", False
         
     except ImportError:
-        return False, "google-auth libraries not installed. Run: pip install google-auth google-auth-oauthlib google-auth-httplib2"
+        return False, "google-auth libraries not installed. Run: pip install google-auth google-auth-oauthlib google-auth-httplib2", False
     except Exception as e:
-        return False, f"Error during token refresh: {e}"
+        return False, f"Error during token refresh: {e}", False
 
 def check_gmail_api(gmail_toolkit, timeout_seconds: int = 10):
     """
