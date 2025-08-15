@@ -56,8 +56,10 @@ class SetupStartupGUI:
         
     def setup_window(self):
         """Initialize the main window"""
+
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
+
         
         self.root = ctk.CTk()
         self.center_window()
@@ -70,6 +72,7 @@ class SetupStartupGUI:
             pass
         
         self.root.title("SmartEmailBot Setup")
+        
         self.root.geometry("580x520")
         self.root.resizable(False, False)
         self._setup_app_icon()
@@ -208,7 +211,7 @@ Setup will configure:
         # Title
         title = ctk.CTkLabel(
             self.main_frame,
-            text="🔑 Gmail API Credentials",
+            text="🔒 Gmail API Credentials",
             font=ctk.CTkFont(size=20, weight="bold")
         )
         title.pack(pady=10)
@@ -591,6 +594,7 @@ This is secure and uses Google's OAuth 2.0 standard.
                     "The application will now start."
                 )
                 self.setup_complete = True
+                
                 self.show_startup_progress()
             else:
                 messagebox.showerror(
@@ -603,7 +607,7 @@ This is secure and uses Google's OAuth 2.0 standard.
             messagebox.showerror("Error", f"Failed to complete setup: {e}")
             
     def show_startup_progress(self):
-        """Show startup progress screen"""
+        """Show startup progress screen (UI only, no fake loading)"""
         self.clear_frame()
         
         # Title
@@ -641,81 +645,45 @@ This is secure and uses Google's OAuth 2.0 standard.
         )
         self.detail_label.pack(pady=5)
         
-        # Start the startup process
-        self.start_startup_process()
+ 
+        if self.setup_complete:
+            print("Setup just completed - scheduling auto-close in 3 seconds")
+            self.root.after(3000, self.complete_startup)
+            
+    def complete_startup(self):
+        """Complete the startup process and close window"""
+        self.startup_complete = True
         
-    def start_startup_process(self):
-        """Start the backend startup process"""
-        def startup_thread():
-            try:
-                steps = [
-                    ("Loading configuration...", self.load_config),
-                    ("Initializing Gmail API...", self.init_gmail),
-                    ("Checking OpenAI connection...", self.check_openai),
-                    ("Setting up database...", self.setup_database),
-                    ("Starting backend services...", self.start_backend_services),
-                    ("Finalizing startup...", self.finalize_startup)
-                ]
-                
-                for i, (status_text, func) in enumerate(steps):
-                    progress = (i / len(steps)) * 100
-                    self.root.after(0, lambda p=progress, s=status_text: self.update_progress(p, s))
-                    
-                    # Execute step
-                    detail = func()
-                    if detail:
-                        self.root.after(0, lambda d=detail: self.update_detail(d))
-                    
-                    time.sleep(0.5)  # Small delay for visual feedback
-                
-                # Complete
-                self.root.after(0, lambda: self.update_progress(100, "✅ Startup complete!"))
-                time.sleep(1)
-                self.root.after(0, self.complete_startup)
-                
-            except Exception as e:
-                self.root.after(0, lambda: self.show_startup_error(str(e)))
-                
-        threading.Thread(target=startup_thread, daemon=True).start()
-        
-    def load_config(self):
-        """Load application configuration"""
-        time.sleep(1)  # Simulate work
-        return "Configuration loaded successfully"
-        
-    def init_gmail(self):
-        """Initialize Gmail API"""
-        time.sleep(2)  # Simulate Gmail API initialization
-        return "Gmail API connection established"
-        
-    def check_openai(self):
-        """Check OpenAI API connection"""
-        time.sleep(1)  # Simulate OpenAI check
-        return "OpenAI API verified"
-        
-    def setup_database(self):
-        """Setup database connections"""
-        time.sleep(1)  # Simulate database setup
-        return "Database connections established"
-        
-    def start_backend_services(self):
-        """Start backend services"""
-        time.sleep(2)  # Simulate backend startup
-        return "Email monitoring service started"
-        
-    def finalize_startup(self):
-        """Finalize startup process"""
-        time.sleep(1)  # Simulate finalization
-        return "All systems ready"
+        # Don't show completion message if setup just completed
+        if not self.setup_complete:
+            # Show completion message briefly
+            self.clear_frame()
+            
+            success_label = ctk.CTkLabel(
+                self.main_frame,
+                text="🎉 SmartEmailBot Ready!",
+                font=ctk.CTkFont(size=24, weight="bold"),
+                text_color="green"
+            )
+            success_label.pack(expand=True)
+            
+            # Auto-close after 2 seconds
+            self.root.after(2000, self.close_window)
+        else:
+            # Setup just completed, close immediately
+            self.close_window()
         
     def update_progress(self, progress, status):
-        """Update progress bar and status"""
-        self.progress_var.set(progress / 100)
-        self.status_label.configure(text=status)
+        """Update progress bar and status (called from main.py real initialization)"""
+        if hasattr(self, 'progress_var'):
+            self.progress_var.set(progress / 100)
+        if hasattr(self, 'status_label'):
+            self.status_label.configure(text=status)
         
     def update_detail(self, detail):
-        """Update detailed status"""
-        self.detail_label.configure(text=detail)
+        """Update detailed status (called from main.py real initialization)"""
+        if hasattr(self, 'detail_label'):
+            self.detail_label.configure(text=detail)
         
     def show_startup_error(self, error_msg):
         """Show startup error"""
@@ -821,4 +789,3 @@ if __name__ == "__main__":
         
     setup_gui = SetupStartupGUI(on_complete_callback=on_complete)
     setup_gui.run()
-    

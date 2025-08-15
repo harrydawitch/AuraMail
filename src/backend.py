@@ -511,6 +511,7 @@ class EmailManager:
                     
                     # Search for today's emails
                     search_results = self.searcher.fetch_email(self.state)
+                    print(f"+++ FETCHED EMAILS +++")
                     print(f"Number of emails in search results: {len(search_results)}")
                                     
                     if self.state.is_first_run:

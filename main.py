@@ -2,13 +2,9 @@ import time
 import threading
 import sys
 import os
-from datetime import datetime
-from typing import Dict
-from dataclasses import dataclass
-from pathlib import Path
-
-# Import unified path utilities
+import locale
 from path_utils import debug_paths, load_environment
+
 
 def check_and_run_setup_gui():
     """
@@ -104,22 +100,48 @@ class EmailApp:
             print("Startup GUI completed - ready to launch main app!")
             
         self.startup_gui = SetupStartupGUI(on_complete_callback=on_startup_complete)
- 
-        # Start initialization in separate thread during GUI startup
-        self.backend_thread = threading.Thread(target=self.initialize_with_progress, daemon=True)
-        self.backend_thread.start()
         
-        # Run the startup GUI
+        # Check if this is just startup (setup already done) vs setup+startup
+        is_setup_complete, _ = self.check_setup_before_startup()
+        
+        if is_setup_complete:
+            print("=== Setup already complete, showing startup with real progress ===")
+            # Start initialization in background thread while GUI shows
+            self.backend_thread = threading.Thread(target=self.initialize_with_progress, daemon=True)
+            self.backend_thread.start()
+        else:
+            print("=== Setup needed, GUI will handle setup then show startup ===")
+        
+        # Run the startup GUI (blocks until complete)
         startup_completed = self.startup_gui.run()
         
+        # If setup was just completed, run initialization now
+        if startup_completed and not is_setup_complete:
+            print("=== Setup just completed, running initialization ===")
+            try:
+                self.initialize_without_progress()
+                print("=== Post-setup initialization completed ===")
+            except Exception as e:
+                print(f"=== Post-setup initialization failed: {e} ===")
+                raise e
+        
         return startup_completed
+
+    def check_setup_before_startup(self):
+        """Check setup status before showing startup"""
+        from setup import check_setup_status
+        return check_setup_status()
 
     def initialize_with_progress(self):
         """Initialize all components with progress updates to the GUI"""
         try:
-            # Check if we're in startup progress mode (not setup mode)
-            if not hasattr(self.startup_gui, 'progress_var'):
-                print("Setup mode detected - skipping progress updates")
+            # Small delay to ensure GUI is ready
+            time.sleep(0.5)
+            
+            # Check if we have progress UI available
+            if not self.startup_gui or not hasattr(self.startup_gui, 'progress_var'):
+                print("No progress UI available - initializing without progress updates")
+                self.initialize_without_progress()
                 return
             
             # Update progress as components initialize
@@ -162,6 +184,30 @@ class EmailApp:
             if self.startup_gui:
                 self.startup_gui.root.after(0, lambda: 
                                            self.startup_gui.show_startup_error(str(e)))
+
+    def initialize_without_progress(self):
+        """Initialize components without GUI progress updates (fallback)"""
+        try:
+            print("Loading configuration...")
+            self.load_config_step()
+            
+            print("Initializing Gmail API...")
+            self.init_gmail_step()
+            
+            print("Checking OpenAI connection...")
+            self.check_openai_step()
+            
+            print("Setting up database...")
+            self.setup_database_step()
+            
+            print("Finalizing startup...")
+            self.finalize_startup_step()
+            
+            print("✅ Initialization complete!")
+            
+        except Exception as e:
+            print(f"❌ Initialization failed: {e}")
+            raise
 
     def load_config_step(self):
         """Load application configuration"""
@@ -353,7 +399,7 @@ class EmailApp:
 def main():
     """Main function to start the connected application"""
     try:
-        print("=== SMARTEMAILBOT STARTUP ===")
+        print("=== SmartEmailBot STARTUP ===")
         
         # Load environment variables first
         print("Loading environment variables...")
@@ -366,29 +412,33 @@ def main():
             print("⚠️  Environment not fully loaded, but continuing with setup check...")
         
         # Check setup before creating app
+        print("=== Checking setup status ===")
         if not check_and_run_setup_gui():
             print("Setup required but not completed. Exiting.")
             sys.exit(1)
+        
+        print("=== Setup check completed successfully ===")
         
         # Re-load environment after potential setup
         print("Re-loading environment after setup...")
         load_environment()
         
-        # Create the application instance (no initialization yet)
+        # Create the application instance
+        print("=== Creating application instance ===")
         app = EmailApp(
             workflow_model="gpt-4o-mini",
             check_interval=120,
         )
         
-        # Show startup progress and initialize all components
-        print("===SHOWING STARTUP PROGRESS===")
+        # Show startup progress and initialize
+        print("=== Starting application initialization ===")
         startup_completed = app.show_startup_progress()
         
         if not startup_completed:
             print("Startup cancelled or failed")
             sys.exit(1)
             
-        print("===INITIALIZATION COMPLETED===\n")
+        print("=== All initialization completed, starting main application ===")
         
         # Now run the application with pre-initialized components
         app.run()
@@ -398,6 +448,7 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

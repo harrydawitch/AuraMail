@@ -32,6 +32,7 @@ class Workflow(ABC):
             
             # Create connection to SQLite database
             conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            print(f"DEBUG: Connect to SQLITE")
             
             # Create Sqlitesaver with connection
             checkpointer = SqliteSaver(conn)
