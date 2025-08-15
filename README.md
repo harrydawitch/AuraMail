@@ -2,6 +2,12 @@
 
 An intelligent email automation system that monitors your Gmail inbox, classifies emails using AI, and helps you manage responses efficiently with a modern desktop GUI.
 
+## 📥 Download
+
+**Latest Release**: [Download SmartEmailBot Setup](https://github.com/harrydawitch/SmartEmailBot/releases/latest/download/SmartEmailBot_setup.exe)
+
+Or visit the [Releases page](https://github.com/harrydawitch/SmartEmailBot/releases) for all versions.
+
 ## 🌟 Features
 
 ### Core Functionality
@@ -27,11 +33,36 @@ An intelligent email automation system that monitors your Gmail inbox, classifie
 
 ## 🚀 Quick Start
 
+### Installation
+1. **Download**: Click the download link above to get `SmartEmailBot_setup.exe`
+2. **Run Setup**: Execute the downloaded file and follow the installation wizard
+3. **Launch**: Start SmartEmailBot from your desktop or start menu
+
 ### Prerequisites
-- Python 3.8+
-- Gmail account with API access
+- Windows 10/11 (64-bit)
+- Internet connection for AI processing
+- Gmail account
 - OpenAI API key
 
+### First-Time Setup
+1. **Gmail API**: Set up Gmail API credentials (see detailed setup guide below)
+2. **OpenAI API**: Configure your OpenAI API key
+3. **Launch**: Start the application and complete initial configuration
+
+## ⚙️ Configuration
+
+### Gmail API Setup
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Gmail API
+4. Create credentials (OAuth 2.0 client ID)
+5. Download `credentials.json` file
+6. Place it in the application's config directory
+
+### OpenAI API Setup
+1. Sign up at [OpenAI](https://openai.com/)
+2. Generate an API key
+3. Enter the key in SmartEmailBot settings
 
 ## 🤖 How It Works
 
@@ -77,7 +108,7 @@ The system uses LangGraph for sophisticated AI workflows:
 3. AI generates draft
 4. Review and send
 
-## ⚙️ Technical Details
+## 🛠️ Technical Details
 
 ### Key Components
 
@@ -97,22 +128,18 @@ The system uses LangGraph for sophisticated AI workflows:
 - **SQLite**: Workflow checkpoints and thread management
 - **JSON**: Email data, application state, and configuration
 
-## 🛠️ Customization
+## 🔧 Customization
 
 ### Modify AI Behavior
 
-Edit prompts in `src/prompts.py`:
-- `classifier_system_prompt`: Email classification rules
-- `summary_system_prompt`: Summarization instructions
-- `writer_system_prompt`: Response generation guidelines
+Edit prompts in the application settings:
+- Classification rules for email categorization
+- Summarization instructions
+- Response generation guidelines
 
 ### Adjust Classification Rules
 
-Modify `default_rules` in `src/prompts.py` to change how emails are categorized.
-
-### Change UI Appearance
-
-The GUI uses CustomTkinter - modify `src/ui/gui.py` for interface changes.
+Modify classification rules through the settings interface to change how emails are categorized.
 
 ## 🔒 Security & Privacy
 
@@ -125,14 +152,32 @@ The GUI uses CustomTkinter - modify `src/ui/gui.py` for interface changes.
 
 ### Common Issues
 
-1. **Gmail API Errors**: Ensure credentials.json is valid and OAuth completed
-2. **OpenAI API Errors**: Verify API key and sufficient credits
-3. **Database Lock Errors**: Close other instances of the application
-4. **UI Not Responding**: Check backend thread status in console
+1. **Installation Issues**: 
+   - Run as administrator if installation fails
+   - Ensure Windows Defender/antivirus allows the installation
+   
+2. **Gmail API Errors**: 
+   - Ensure credentials.json is valid and OAuth completed
+   - Check Gmail API quotas in Google Cloud Console
+   
+3. **OpenAI API Errors**: 
+   - Verify API key and sufficient credits
+   - Check API rate limits
+   
+4. **Application Not Starting**: 
+   - Check Windows Event Viewer for error details
+   - Ensure all dependencies are installed
 
+### Getting Help
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Look for error logs in the application directory
+3. Contact support: tl376284@gmail.com
 
 ## 🤝 Contributing
-Any contribution are welcome
+
+Contributions are welcome! 
 1. Fork the repository
 2. Create a feature branch 
 3. Commit your changes 
@@ -156,9 +201,14 @@ For issues and questions:
 1. Check the troubleshooting section
 2. Search existing GitHub issues
 3. Create a new issue with detailed description
-4. Any further question please send it to my email: tl376284@gmail.com
+4. Email support: tl376284@gmail.com
 
 ---
 
 **Note**: This application requires Gmail API access and OpenAI API key. Ensure you comply with both services' terms of use and rate limits.
 
+### System Requirements
+- **OS**: Windows 10/11 (64-bit)
+- **RAM**: 4GB minimum, 8GB recommended
+- **Storage**: 100MB available space
+- **Network**: Internet connection required for AI processing
