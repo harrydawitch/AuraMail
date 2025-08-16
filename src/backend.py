@@ -107,10 +107,7 @@ class EmailState:
         is_new_thread = thread_id not in self.processed_threads
         is_not_from_me = my_email not in sender_lower if my_email else True
         
-        result = is_new_id and is_new_thread and is_not_from_me
-        
-        print(f"Final result: {result} (new_id: {is_new_id}, new_thread: {is_new_thread}, not_from_me: {is_not_from_me})")
-        
+        result = is_new_id and is_new_thread and is_not_from_me        
         return result
     
     
@@ -494,9 +491,7 @@ class EmailManager:
 
         else:
             print("✅ Gmail token validated successfully at startup")
-        
-        last_token_check = time.time()  # Set initial check time to now
-        TOKEN_CHECK_INTERVAL = 3600  # 1 hour in seconds
+
 
         self.commands_thread = threading.Thread(
             target=self.communicator.poll_commands, 
@@ -507,19 +502,13 @@ class EmailManager:
         try:
             while True:
                 try:
-                    current_time = time.time()
-                    
-                    # Check token every hour (after startup check)
-                    if current_time - last_token_check > TOKEN_CHECK_INTERVAL:
-                        print("\n=== Checking Gmail token status ===")
-                        if self._check_and_refresh_gmail_token():
-                            last_token_check = current_time
-                        else:
-                            print("⚠️ Gmail token check failed - continuing with existing connection")
+
+                    print("\n=== Checking Gmail token status ===")
+                    if not self._check_and_refresh_gmail_token():
+                        print("⚠️ Gmail token check failed - continuing with existing connection")
                     
                     # Search for today's emails
                     search_results = self.searcher.fetch_email(self.state)
-                    print(f"+++ FETCHED EMAILS +++")
                     print(f"Number of emails in search results: {len(search_results)}")
                                     
                     if self.state.is_first_run:

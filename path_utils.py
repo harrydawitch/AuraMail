@@ -17,15 +17,10 @@ def get_app_dir():
     if getattr(sys, 'frozen', False):  # PyInstaller bundled
         # When bundled, use the directory containing the executable
         app_dir = Path(sys.executable).parent
-        print(f"[PATH] Running as bundled app, executable at: {sys.executable}")
-        print(f"[PATH] App directory: {app_dir}")
         return app_dir
     else:  # Development mode
         # In development, use the project root (where main.py is located)
         app_dir = Path(__file__).resolve().parent
-        print(f"[PATH] Running in development mode")
-        print(f"[PATH] Script file: {__file__}")
-        print(f"[PATH] App directory: {app_dir}")
         return app_dir
 
 def get_credentials_path():
@@ -68,7 +63,6 @@ def load_environment():
                 return True
                 
         except ImportError:
-            print(f"[ENV] ⚠️  python-dotenv not available, skipping .env loading")
             return False
         except Exception as e:
             print(f"[ENV] ❌ Error loading .env file: {e}")
